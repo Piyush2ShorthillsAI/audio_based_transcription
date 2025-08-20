@@ -5,7 +5,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
 # Database configuration
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./test.db")
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:password@localhost:5432/crm_auth")
 
 # For async operations
 database = Database(DATABASE_URL)
@@ -21,12 +21,12 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 async def connect_db():
     """Connect to the database"""
     await database.connect()
-    print("🔗 Connected to SQLite database")
+    print("🔗 Connected to PostgreSQL database")
 
 async def disconnect_db():
     """Disconnect from the database"""
     await database.disconnect()
-    print("📴 Disconnected from SQLite database")
+    print("📴 Disconnected from PostgreSQL database")
 
 def create_tables():
     """Create all tables"""
