@@ -1,0 +1,517 @@
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import './AuthService.css';
+
+// =============================================================================
+// API SERVICE
+// =============================================================================
+const API_BASE = 'http://127.0.0.1:8000';
+
+export const ApiService = {
+  async login(loginData) {
+    try {
+      const response = await fetch(`${API_BASE}/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(loginData),
+      });
+
+      if (response.ok) {
+        const tokenData = await response.json();
+        return { success: true, data: tokenData };
+      } else {
+        const errorData = await response.json();
+        return { success: false, error: errorData.detail };
+      }
+    } catch (error) {
+      return { success: false, error: 'Network error occurred' };
+    }
+  },
+
+  async signup(formData) {
+    try {
+      const response = await fetch(`${API_BASE}/auth/signup`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (response.ok) {
+        const tokenData = await response.json();
+        return { success: true, data: tokenData };
+      } else {
+        const errorData = await response.json();
+        return { success: false, error: errorData.detail };
+      }
+    } catch (error) {
+      return { success: false, error: 'Network error occurred' };
+    }
+  },
+
+  async getCurrentUser(token) {
+    try {
+      const response = await fetch(`${API_BASE}/auth/me`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (response.ok) {
+        return await response.json();
+      } else {
+        return null;
+      }
+    } catch (error) {
+      return null;
+    }
+  },
+
+  async fetchPersons(token) {
+    try {
+      const response = await fetch(`${API_BASE}/persons`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (response.ok) {
+        return await response.json();
+      } else {
+        throw new Error('Failed to fetch persons');
+      }
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  async fetchPerson(token, id) {
+    try {
+      const response = await fetch(`${API_BASE}/persons/${id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (response.ok) {
+        return await response.json();
+      } else {
+        throw new Error('Failed to fetch person');
+      }
+    } catch (error) {
+      throw error;
+    }
+  }
+};
+
+// =============================================================================
+// AUTH CONTEXT
+// =============================================================================
+const AuthContext = createContext();
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};
+
+// =============================================================================
+// AUTH PROVIDER
+// =============================================================================
+export const AuthProvider = ({ children }) => {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [token, setToken] = useState(localStorage.getItem('access_token'));
+
+  useEffect(() => {
+    if (token) {
+      fetchCurrentUser();
+    } else {
+      setLoading(false);
+    }
+  }, [token]);
+
+  const fetchCurrentUser = async () => {
+    try {
+      const userData = await ApiService.getCurrentUser(token);
+      if (userData) {
+        setUser(userData);
+      } else {
+        logout();
+      }
+    } catch (error) {
+      console.error('Error fetching user:', error);
+      logout();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const login = async (loginData) => {
+    const result = await ApiService.login(loginData);
+    
+    if (result.success) {
+      const tokenData = result.data;
+      setToken(tokenData.access_token);
+      localStorage.setItem('access_token', tokenData.access_token);
+      localStorage.setItem('refresh_token', tokenData.refresh_token);
+      return { success: true };
+    }
+    
+    return result;
+  };
+
+  const signup = async (formData) => {
+    const result = await ApiService.signup(formData);
+    
+    if (result.success) {
+      const tokenData = result.data;
+      setToken(tokenData.access_token);
+      localStorage.setItem('access_token', tokenData.access_token);
+      localStorage.setItem('refresh_token', tokenData.refresh_token);
+      return { success: true };
+    }
+    
+    return result;
+  };
+
+  const logout = () => {
+    setUser(null);
+    setToken(null);
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+  };
+
+  const value = {
+    user,
+    loading,
+    login,
+    signup,
+    logout,
+    isAuthenticated: !!user,
+    apiService: ApiService,
+    token
+  };
+
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+// =============================================================================
+// LOADING SCREEN COMPONENT
+// =============================================================================
+export const LoadingScreen = () => (
+  <div className="loading-container">
+    <div>Loading...</div>
+  </div>
+);
+
+// =============================================================================
+// LOGIN FORM COMPONENT
+// =============================================================================
+export const LoginForm = ({ onToggleMode }) => {
+  const [formData, setFormData] = useState({
+    login: '',
+    password: ''
+  });
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const { login } = useAuth();
+
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+
+    const result = await login(formData);
+    
+    if (!result.success) {
+      setError(result.error);
+    }
+    
+    setLoading(false);
+  };
+
+  return (
+    <div className="auth-container">
+      <div className="auth-card">
+        <h2>Login</h2>
+        
+        {error && <div className="error-message">{error}</div>}
+        
+        <form onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label htmlFor="login">Email or Username:</label>
+            <input
+              type="text"
+              id="login"
+              name="login"
+              value={formData.login}
+              onChange={handleChange}
+              required
+              placeholder="Enter email or username"
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="password">Password:</label>
+            <input
+              type="password"
+              id="password"
+              name="password"
+              value={formData.password}
+              onChange={handleChange}
+              required
+              placeholder="Enter password"
+            />
+          </div>
+
+          <button type="submit" className="auth-button" disabled={loading}>
+            {loading ? 'Logging in...' : 'Login'}
+          </button>
+        </form>
+
+        <p className="toggle-mode">
+          Don't have an account?{' '}
+          <button type="button" onClick={onToggleMode}>
+            Sign up
+          </button>
+        </p>
+      </div>
+    </div>
+  );
+};
+
+// =============================================================================
+// SIGNUP FORM COMPONENT
+// =============================================================================
+export const SignupForm = ({ onToggleMode }) => {
+  const [formData, setFormData] = useState({
+    username: '',
+    email: '',
+    password: '',
+    confirmPassword: ''
+  });
+  const [photo, setPhoto] = useState(null);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const { signup } = useAuth();
+
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
+  };
+
+  const handlePhotoChange = (e) => {
+    if (e.target.files[0]) {
+      setPhoto(e.target.files[0]);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match');
+      setLoading(false);
+      return;
+    }
+
+    const submitData = new FormData();
+    submitData.append('username', formData.username);
+    submitData.append('email', formData.email);
+    submitData.append('password', formData.password);
+    
+    if (photo) {
+      submitData.append('photo', photo);
+    }
+
+    const result = await signup(submitData);
+    
+    if (!result.success) {
+      setError(result.error);
+    }
+    
+    setLoading(false);
+  };
+
+  return (
+    <div className="auth-container">
+      <div className="auth-card">
+        <h2>Sign Up</h2>
+        
+        {error && <div className="error-message">{error}</div>}
+        
+        <form onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label htmlFor="username">Username:</label>
+            <input
+              type="text"
+              id="username"
+              name="username"
+              value={formData.username}
+              onChange={handleChange}
+              required
+              placeholder="Enter username"
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="email">Email:</label>
+            <input
+              type="email"
+              id="email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              required
+              placeholder="Enter email"
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="password">Password:</label>
+            <input
+              type="password"
+              id="password"
+              name="password"
+              value={formData.password}
+              onChange={handleChange}
+              required
+              placeholder="Enter password"
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="confirmPassword">Confirm Password:</label>
+            <input
+              type="password"
+              id="confirmPassword"
+              name="confirmPassword"
+              value={formData.confirmPassword}
+              onChange={handleChange}
+              required
+              placeholder="Confirm password"
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="photo">Profile Photo (optional):</label>
+            <input
+              type="file"
+              id="photo"
+              name="photo"
+              onChange={handlePhotoChange}
+              accept="image/*"
+            />
+          </div>
+
+          <button type="submit" className="auth-button" disabled={loading}>
+            {loading ? 'Creating account...' : 'Sign Up'}
+          </button>
+        </form>
+
+        <p className="toggle-mode">
+          Already have an account?{' '}
+          <button type="button" onClick={onToggleMode}>
+            Login
+          </button>
+        </p>
+      </div>
+    </div>
+  );
+};
+
+// =============================================================================
+// HEADER COMPONENT
+// =============================================================================
+export const Header = ({ title }) => {
+  const { user, logout } = useAuth();
+
+  const handleLogout = () => {
+    logout();
+  };
+
+  return (
+    <div className="header">
+      <h1>{title}</h1>
+      
+      {user && (
+        <div className="profile-section">
+          <div className="profile-info">
+            <div className="profile-username">{user.username}</div>
+            <button className="logout-btn" onClick={handleLogout}>
+              Logout
+            </button>
+          </div>
+          
+          {user.photo_url ? (
+            <img
+              src={`${API_BASE}${user.photo_url}`}
+              alt={user.username}
+              className="profile-photo"
+            />
+          ) : (
+            <div className="profile-photo">
+              {user.username.charAt(0).toUpperCase()}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// =============================================================================
+// AUTH WRAPPER COMPONENT
+// =============================================================================
+export const AuthWrapper = ({ children }) => {
+  const { user, loading } = useAuth();
+  const [authMode, setAuthMode] = useState('login');
+
+  if (loading) {
+    return <LoadingScreen />;
+  }
+
+  if (!user) {
+    return authMode === 'login' ? (
+      <LoginForm onToggleMode={() => setAuthMode('signup')} />
+    ) : (
+      <SignupForm onToggleMode={() => setAuthMode('login')} />
+    );
+  }
+
+  return children;
+};
+
+// =============================================================================
+// DEFAULT EXPORT
+// =============================================================================
+export default {
+  AuthProvider,
+  AuthWrapper,
+  Header,
+  LoadingScreen,
+  useAuth,
+  ApiService
+};
