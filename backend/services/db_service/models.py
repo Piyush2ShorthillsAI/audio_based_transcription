@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, DateTime, Text, ForeignKey, UniqueConstraint
+from sqlalchemy import Column, String, DateTime, Text, ForeignKey, Boolean
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from datetime import datetime
@@ -60,6 +60,10 @@ class Contact(Base):
     email = Column(String(100), nullable=True, index=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # New simplified fields
+    is_favorite = Column(Boolean, default=False, nullable=False, index=True)
+    last_accessed_at = Column(DateTime, nullable=True, index=True)
 
     # Relationship to User
     user = relationship("User", back_populates="contacts")
@@ -72,53 +76,7 @@ class Contact(Base):
             "name": self.name,
             "email": self.email,
             "created_at": self.created_at,
-            "updated_at": self.updated_at
-        }
-
-class UserRecentContact(Base):
-    __tablename__ = "user_recent_contacts"
-    
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
-    contact_id = Column(UUID(as_uuid=True), ForeignKey("crm_contacts.id"), nullable=False, index=True)
-    accessed_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    
-    # Ensure one record per user-contact pair (will update accessed_at on re-access)
-    __table_args__ = (UniqueConstraint('user_id', 'contact_id', name='unique_user_contact_recent'),)
-    
-    # Relationships
-    user = relationship("User")
-    contact = relationship("Contact")
-    
-    def to_dict(self):
-        """Convert model to dictionary"""
-        return {
-            "id": str(self.id),
-            "user_id": str(self.user_id),
-            "contact_id": str(self.contact_id),
-            "accessed_at": self.accessed_at
-        }
-
-class UserFavorite(Base):
-    __tablename__ = "user_favorites"
-    
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
-    contact_id = Column(UUID(as_uuid=True), ForeignKey("crm_contacts.id"), nullable=False, index=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    
-    # Ensure one record per user-contact pair
-    __table_args__ = (UniqueConstraint('user_id', 'contact_id', name='unique_user_contact_favorite'),)
-    
-    # Relationships
-    user = relationship("User")
-    contact = relationship("Contact")
-    
-    def to_dict(self):
-        """Convert model to dictionary"""
-        return {
-            "id": str(self.id),
-            "user_id": str(self.user_id), 
-            "contact_id": str(self.contact_id),
-            "created_at": self.created_at
+            "updated_at": self.updated_at,
+            "is_favorite": self.is_favorite,
+            "last_accessed_at": self.last_accessed_at
         }

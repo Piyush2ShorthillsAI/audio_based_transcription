@@ -2,7 +2,7 @@
 # This package contains all database-related functionality
 
 from .database import database, connect_db, disconnect_db, create_tables, get_database
-from .models import User, Session, Contact, UserRecentContact, UserFavorite
+from .models import User, Session, Contact
 
 __all__ = [
     'database',
@@ -12,7 +12,5 @@ __all__ = [
     'get_database',
     'User',
     'Session',
-    'Contact',
-    'UserRecentContact',
-    'UserFavorite'
+    'Contact'
 ]
