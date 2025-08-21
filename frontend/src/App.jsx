@@ -160,6 +160,7 @@ function AuthenticatedApp() {
             favorites={favorites}
             onToggleFavorite={handleToggleFavorite}
             onClearFavorites={handleClearFavorites}
+            onContactClick={handleContactClick}
           />
         );
       default:

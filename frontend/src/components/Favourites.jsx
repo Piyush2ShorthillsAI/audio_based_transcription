@@ -5,7 +5,8 @@ import './ContactsList.css';
 const Favourites = ({ 
   favorites, 
   onToggleFavorite, 
-  onClearFavorites 
+  onClearFavorites,
+  onContactClick 
 }) => {
   const [showConfirmClear, setShowConfirmClear] = useState(false);
 
@@ -103,7 +104,7 @@ const Favourites = ({
                 contact={contact}
                 isFavorite={true}
                 onToggleFavorite={onToggleFavorite}
-                onViewContact={null} // No need to add to recent from favorites
+                onViewContact={onContactClick} // Now viewing favorites also adds to recents
                 showHeart={true}
                 variant="favorite"
               />
