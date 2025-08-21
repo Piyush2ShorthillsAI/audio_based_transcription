@@ -9,7 +9,9 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 from services.db_service import database, connect_db, disconnect_db, create_tables
+from services.db_service.models import Contact
 from services.authservice import AuthService, UserSignup, UserLogin, TokenResponse, User
+from pydantic import BaseModel
 
 # Database lifecycle management
 @asynccontextmanager
@@ -37,6 +39,18 @@ app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 # Security
 security = HTTPBearer()
+
+# Pydantic models for request/response
+class ContactCreate(BaseModel):
+    name: str
+    email: Optional[str] = None
+
+class ContactResponse(BaseModel):
+    id: str
+    name: str
+    email: str
+    created_at: str
+    updated_at: str
 
 # Initialize AuthService with database
 def get_auth_service():
@@ -117,26 +131,171 @@ async def refresh_token(
     """Refresh access token"""
     return await auth_service.refresh_access_token(refresh_token)
 
-# Original endpoints (now protected)
+# Contacts endpoints (now with real database data)
 @app.get("/persons")
-async def read_persons(current_user: User = Depends(get_current_user)):
-    return [
-        {"id": 1, "name": "Alice"},
-        {"id": 2, "name": "Bob"},
-        {"id": 3, "name": "Charlie"},
-    ]
+async def read_contacts(current_user: User = Depends(get_current_user)):
+    """Get all contacts for the current user from crm_contacts table"""
+    try:
+        query = """
+        SELECT id, user_id, name, email, created_at, updated_at 
+        FROM crm_contacts 
+        WHERE user_id = :user_id 
+        ORDER BY name ASC
+        """
+        contacts = await database.fetch_all(query, {"user_id": current_user.id})
+        return [
+            {
+                "id": str(contact["id"]),
+                "name": contact["name"],
+                "email": contact["email"] or "",
+                "created_at": contact["created_at"],
+                "updated_at": contact["updated_at"]
+            }
+            for contact in contacts
+        ]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 @app.get("/persons/{person_id}")
-async def read_person(person_id: int, current_user: User = Depends(get_current_user)):
-    persons = [
-        {"id": 1, "name": "Alice"},
-        {"id": 2, "name": "Bob"},
-        {"id": 3, "name": "Charlie"},
-    ]
-    for person in persons:
-        if person["id"] == person_id:
-            return person
-    return {"error": "Person not found"}
+async def read_contact(person_id: str, current_user: User = Depends(get_current_user)):
+    """Get a specific contact by ID for the current user"""
+    try:
+        query = """
+        SELECT id, user_id, name, email, created_at, updated_at 
+        FROM crm_contacts 
+        WHERE id = :contact_id AND user_id = :user_id
+        """
+        contact = await database.fetch_one(query, {
+            "contact_id": person_id,
+            "user_id": current_user.id
+        })
+        
+        if not contact:
+            raise HTTPException(status_code=404, detail="Contact not found")
+        
+        return {
+            "id": str(contact["id"]),
+            "name": contact["name"],
+            "email": contact["email"] or "",
+            "created_at": contact["created_at"],
+            "updated_at": contact["updated_at"]
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+@app.post("/persons", response_model=ContactResponse)
+async def create_contact(
+    contact_data: ContactCreate, 
+    current_user: User = Depends(get_current_user)
+):
+    """Create a new contact for the current user"""
+    try:
+        # Generate UUID for the new contact
+        contact_id = str(uuid.uuid4())
+        
+        query = """
+        INSERT INTO crm_contacts (id, user_id, name, email, created_at, updated_at) 
+        VALUES (:id, :user_id, :name, :email, NOW(), NOW())
+        RETURNING id, user_id, name, email, created_at, updated_at
+        """
+        
+        result = await database.fetch_one(query, {
+            "id": contact_id,
+            "user_id": current_user.id,
+            "name": contact_data.name,
+            "email": contact_data.email
+        })
+        
+        if not result:
+            raise HTTPException(status_code=500, detail="Failed to create contact")
+        
+        return ContactResponse(
+            id=str(result["id"]),
+            name=result["name"],
+            email=result["email"] or "",
+            created_at=result["created_at"].isoformat(),
+            updated_at=result["updated_at"].isoformat()
+        )
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+@app.put("/persons/{person_id}", response_model=ContactResponse)
+async def update_contact(
+    person_id: str,
+    contact_data: ContactCreate,
+    current_user: User = Depends(get_current_user)
+):
+    """Update a contact for the current user"""
+    try:
+        # First check if the contact exists and belongs to the user
+        check_query = """
+        SELECT id FROM crm_contacts 
+        WHERE id = :contact_id AND user_id = :user_id
+        """
+        existing_contact = await database.fetch_one(check_query, {
+            "contact_id": person_id,
+            "user_id": current_user.id
+        })
+        
+        if not existing_contact:
+            raise HTTPException(status_code=404, detail="Contact not found")
+        
+        # Update the contact
+        update_query = """
+        UPDATE crm_contacts 
+        SET name = :name, email = :email, updated_at = NOW() 
+        WHERE id = :contact_id AND user_id = :user_id
+        RETURNING id, user_id, name, email, created_at, updated_at
+        """
+        
+        result = await database.fetch_one(update_query, {
+            "contact_id": person_id,
+            "user_id": current_user.id,
+            "name": contact_data.name,
+            "email": contact_data.email
+        })
+        
+        return ContactResponse(
+            id=str(result["id"]),
+            name=result["name"],
+            email=result["email"] or "",
+            created_at=result["created_at"].isoformat(),
+            updated_at=result["updated_at"].isoformat()
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+@app.delete("/persons/{person_id}")
+async def delete_contact(person_id: str, current_user: User = Depends(get_current_user)):
+    """Delete a contact for the current user"""
+    try:
+        # Check if the contact exists and belongs to the user, then delete
+        delete_query = """
+        DELETE FROM crm_contacts 
+        WHERE id = :contact_id AND user_id = :user_id
+        RETURNING id
+        """
+        
+        result = await database.fetch_one(delete_query, {
+            "contact_id": person_id,
+            "user_id": current_user.id
+        })
+        
+        if not result:
+            raise HTTPException(status_code=404, detail="Contact not found")
+        
+        return {"message": "Contact deleted successfully", "id": str(result["id"])}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 # Health check endpoint (public)
 @app.get("/health")

@@ -70,7 +70,15 @@ function ContactDetail() {
             <strong>Name:</strong> {contact.name}
           </div>
           
-          {/* Add more contact details here as needed */}
+          <div style={{ marginBottom: '1rem' }}>
+            <strong>Email:</strong> {contact.email || 'No email provided'}
+          </div>
+          
+          {contact.created_at && (
+            <div style={{ marginBottom: '1rem' }}>
+              <strong>Added:</strong> {new Date(contact.created_at).toLocaleDateString()}
+            </div>
+          )}
         </div>
         
         <div style={{ marginTop: '2rem' }}>
