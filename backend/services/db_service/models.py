@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, DateTime, Text, ForeignKey
+from sqlalchemy import Column, String, DateTime, Text, ForeignKey, Boolean
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from datetime import datetime
@@ -60,6 +60,10 @@ class Contact(Base):
     email = Column(String(100), nullable=True, index=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # New simplified fields
+    is_favorite = Column(Boolean, default=False, nullable=False, index=True)
+    last_accessed_at = Column(DateTime, nullable=True, index=True)
 
     # Relationship to User
     user = relationship("User", back_populates="contacts")
@@ -72,5 +76,7 @@ class Contact(Base):
             "name": self.name,
             "email": self.email,
             "created_at": self.created_at,
-            "updated_at": self.updated_at
+            "updated_at": self.updated_at,
+            "is_favorite": self.is_favorite,
+            "last_accessed_at": self.last_accessed_at
         }

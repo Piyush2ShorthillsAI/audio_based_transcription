@@ -103,6 +103,68 @@ export const ApiService = {
     } catch (error) {
       throw error;
     }
+  },
+
+  // Generic HTTP methods for API calls
+  async get(endpoint, token) {
+    try {
+      const response = await fetch(`${API_BASE}${endpoint}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (response.ok) {
+        return await response.json();
+      } else {
+        throw new Error(`GET ${endpoint} failed`);
+      }
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  async post(endpoint, data, token) {
+    try {
+      const response = await fetch(`${API_BASE}${endpoint}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+      
+      if (response.ok) {
+        return await response.json();
+      } else {
+        throw new Error(`POST ${endpoint} failed`);
+      }
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  async delete(endpoint, token) {
+    try {
+      const response = await fetch(`${API_BASE}${endpoint}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (response.ok) {
+        return await response.json();
+      } else {
+        throw new Error(`DELETE ${endpoint} failed`);
+      }
+    } catch (error) {
+      throw error;
+    }
   }
 };
 

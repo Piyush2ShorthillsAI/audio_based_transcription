@@ -8,20 +8,40 @@ const RecentContacts = ({
   onToggleFavorite, 
   onClearRecent 
 }) => {
-  const formatTimeAgo = (timestamp) => {
-    const now = new Date();
+  const formatTimestamp = (timestamp) => {
     const accessTime = new Date(timestamp);
-    const diffInMinutes = Math.floor((now - accessTime) / (1000 * 60));
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
     
-    if (diffInMinutes < 1) return 'Just now';
-    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+    const timeString = accessTime.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
     
-    const diffInHours = Math.floor(diffInMinutes / 60);
-    if (diffInHours < 24) return `${diffInHours}h ago`;
+    // Check if it's today
+    if (accessTime.toDateString() === today.toDateString()) {
+      return `Today at ${timeString}`;
+    }
     
-    const diffInDays = Math.floor(diffInHours / 24);
-    return `${diffInDays}d ago`;
+    // Check if it's yesterday
+    if (accessTime.toDateString() === yesterday.toDateString()) {
+      return `Yesterday at ${timeString}`;
+    }
+    
+    // For older dates, show full date
+    const dateString = accessTime.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: accessTime.getFullYear() !== today.getFullYear() ? 'numeric' : undefined
+    });
+    
+    return `${dateString} at ${timeString}`;
   };
+
+  // Ensure we always limit to exactly 10 most recent contacts
+  const displayedContacts = recentContacts ? recentContacts.slice(0, 10) : [];
 
   return (
     <div className="contacts-container">
@@ -29,9 +49,11 @@ const RecentContacts = ({
       <div className="contacts-header">
         <div className="header-info">
           <h2>Recent Contacts</h2>
-          <span className="contact-count">{recentContacts.length} contacts</span>
+          <span className="contact-count">
+            {displayedContacts.length} contacts
+          </span>
         </div>
-        {recentContacts.length > 0 && (
+        {displayedContacts.length > 0 && (
           <button className="clear-button" onClick={onClearRecent}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M3 6h18"></path>
@@ -49,19 +71,24 @@ const RecentContacts = ({
           <circle cx="12" cy="12" r="10"></circle>
           <path d="M12 6v6l4 2"></path>
         </svg>
-        <span>Contacts you've recently viewed will appear here</span>
+        <span>
+          Contacts you've recently viewed will appear here 
+          {recentContacts && recentContacts.length > 0 && 
+            ` (showing at most 10 recents)`
+          }
+        </span>
       </div>
 
       {/* Recent Contacts List */}
-      <div className="contacts-list">
-        {recentContacts.length === 0 ? (
+      <div className="contacts-list" style={{maxHeight: '600px', overflowY: 'auto'}}>
+        {displayedContacts.length === 0 ? (
           <div className="empty-state">
             <div className="empty-icon">⏰</div>
             <h3>No recent contacts</h3>
             <p>Contacts you view will appear here for quick access</p>
           </div>
         ) : (
-          recentContacts.map(item => (
+          displayedContacts.map(item => (
             <div key={`${item.contact.id}-${item.accessedAt}`} className="recent-contact-wrapper">
               <ContactCard
                 contact={item.contact}
@@ -72,7 +99,7 @@ const RecentContacts = ({
                 variant="recent"
               />
               <div className="access-time">
-                {formatTimeAgo(item.accessedAt)}
+                {formatTimestamp(item.accessedAt)}
               </div>
             </div>
           ))
