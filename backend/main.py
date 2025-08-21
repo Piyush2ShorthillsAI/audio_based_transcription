@@ -297,6 +297,198 @@ async def delete_contact(person_id: str, current_user: User = Depends(get_curren
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
+# Recent Contacts endpoints
+@app.post("/recents/{contact_id}")
+async def add_recent_contact(contact_id: str, current_user: User = Depends(get_current_user)):
+    """Add or update a recent contact for the current user"""
+    try:
+        # First verify the contact exists and belongs to the user
+        contact_query = """
+        SELECT id FROM crm_contacts 
+        WHERE id = :contact_id AND user_id = :user_id
+        """
+        contact = await database.fetch_one(contact_query, {
+            "contact_id": contact_id,
+            "user_id": current_user.id
+        })
+        
+        if not contact:
+            raise HTTPException(status_code=404, detail="Contact not found")
+        
+        # Use UPSERT to add or update recent contact
+        upsert_query = """
+        INSERT INTO user_recent_contacts (user_id, contact_id, accessed_at)
+        VALUES (:user_id, :contact_id, NOW())
+        ON CONFLICT (user_id, contact_id)
+        DO UPDATE SET accessed_at = NOW()
+        """
+        
+        await database.execute(upsert_query, {
+            "user_id": current_user.id,
+            "contact_id": contact_id
+        })
+        
+        return {"message": "Recent contact updated", "contact_id": contact_id}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+@app.get("/recents")
+async def get_recent_contacts(current_user: User = Depends(get_current_user)):
+    """Get recent contacts for the current user (limited to 20, ordered by most recent)"""
+    try:
+        query = """
+        SELECT c.id, c.name, c.email, c.created_at, c.updated_at, r.accessed_at
+        FROM user_recent_contacts r
+        JOIN crm_contacts c ON r.contact_id = c.id
+        WHERE r.user_id = :user_id
+        ORDER BY r.accessed_at DESC
+        LIMIT 20
+        """
+        
+        results = await database.fetch_all(query, {"user_id": current_user.id})
+        
+        return [
+            {
+                "contact": {
+                    "id": str(result["id"]),
+                    "name": result["name"],
+                    "email": result["email"] or "",
+                    "created_at": result["created_at"].isoformat(),
+                    "updated_at": result["updated_at"].isoformat()
+                },
+                "accessedAt": result["accessed_at"].isoformat()
+            }
+            for result in results
+        ]
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+@app.delete("/recents")
+async def clear_recent_contacts(current_user: User = Depends(get_current_user)):
+    """Clear all recent contacts for the current user"""
+    try:
+        delete_query = """
+        DELETE FROM user_recent_contacts 
+        WHERE user_id = :user_id
+        """
+        
+        await database.execute(delete_query, {"user_id": current_user.id})
+        
+        return {"message": "Recent contacts cleared"}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+# Favorites endpoints
+@app.post("/favorites/{contact_id}")
+async def add_favorite_contact(contact_id: str, current_user: User = Depends(get_current_user)):
+    """Add a contact to favorites"""
+    try:
+        # First verify the contact exists and belongs to the user
+        contact_query = """
+        SELECT id FROM crm_contacts 
+        WHERE id = :contact_id AND user_id = :user_id
+        """
+        contact = await database.fetch_one(contact_query, {
+            "contact_id": contact_id,
+            "user_id": current_user.id
+        })
+        
+        if not contact:
+            raise HTTPException(status_code=404, detail="Contact not found")
+        
+        # Add to favorites (ignore if already exists)
+        insert_query = """
+        INSERT INTO user_favorites (user_id, contact_id, created_at)
+        VALUES (:user_id, :contact_id, NOW())
+        ON CONFLICT (user_id, contact_id) DO NOTHING
+        """
+        
+        await database.execute(insert_query, {
+            "user_id": current_user.id,
+            "contact_id": contact_id
+        })
+        
+        return {"message": "Contact added to favorites", "contact_id": contact_id}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+@app.delete("/favorites/{contact_id}")
+async def remove_favorite_contact(contact_id: str, current_user: User = Depends(get_current_user)):
+    """Remove a contact from favorites"""
+    try:
+        delete_query = """
+        DELETE FROM user_favorites 
+        WHERE user_id = :user_id AND contact_id = :contact_id
+        RETURNING contact_id
+        """
+        
+        result = await database.fetch_one(delete_query, {
+            "user_id": current_user.id,
+            "contact_id": contact_id
+        })
+        
+        if not result:
+            raise HTTPException(status_code=404, detail="Favorite not found")
+        
+        return {"message": "Contact removed from favorites", "contact_id": contact_id}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+@app.get("/favorites")
+async def get_favorite_contacts(current_user: User = Depends(get_current_user)):
+    """Get favorite contacts for the current user"""
+    try:
+        query = """
+        SELECT c.id, c.name, c.email, c.created_at, c.updated_at
+        FROM user_favorites f
+        JOIN crm_contacts c ON f.contact_id = c.id
+        WHERE f.user_id = :user_id
+        ORDER BY f.created_at DESC
+        """
+        
+        results = await database.fetch_all(query, {"user_id": current_user.id})
+        
+        return [
+            {
+                "id": str(result["id"]),
+                "name": result["name"],
+                "email": result["email"] or "",
+                "created_at": result["created_at"].isoformat(),
+                "updated_at": result["updated_at"].isoformat()
+            }
+            for result in results
+        ]
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+@app.delete("/favorites")
+async def clear_favorite_contacts(current_user: User = Depends(get_current_user)):
+    """Clear all favorite contacts for the current user"""
+    try:
+        delete_query = """
+        DELETE FROM user_favorites 
+        WHERE user_id = :user_id
+        """
+        
+        await database.execute(delete_query, {"user_id": current_user.id})
+        
+        return {"message": "Favorite contacts cleared"}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
 # Health check endpoint (public)
 @app.get("/health")
 async def health_check():
