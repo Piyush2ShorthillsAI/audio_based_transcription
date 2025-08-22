@@ -210,7 +210,6 @@
   padding: 24px;
   flex: 1;
   overflow-y: auto;
-  height: 0; /* Force flex item to respect container height */
 }
 
 .contacts-list::-webkit-scrollbar {

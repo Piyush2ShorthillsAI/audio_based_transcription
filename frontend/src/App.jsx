@@ -62,16 +62,27 @@ function AuthenticatedApp() {
   const handleContactClick = async (contact) => {
     console.log('🔄 Updating contact access time:', contact.name);
     
-    // SIMPLIFIED APPROACH: Just call the recents API and refresh persons list
     if (user && token) {
+      // OPTIMISTIC UPDATE: Update UI immediately
+      const now = new Date().toISOString();
+      setPersons(prevPersons => 
+        prevPersons.map(person => 
+          person.id === contact.id 
+            ? { ...person, last_accessed_at: now }
+            : person
+        )
+      );
+      
       try {
         const result = await apiService.post(`/recents/${contact.id}`, {}, token);
         console.log('🌐 Contact access time updated:', result);
         
-        // Refresh the main persons list which now includes last_accessed_at field
-        await fetchPersons();
+        // Only refresh if there's an error to ensure consistency
+        // Otherwise, the optimistic update is sufficient
       } catch (error) {
         console.log('🌐 Backend update failed:', error.message);
+        // Revert optimistic update by fetching fresh data
+        await fetchPersons();
       }
     }
   };
@@ -79,16 +90,25 @@ function AuthenticatedApp() {
   const handleToggleFavorite = async (contact) => {
     console.log(`❤️ Toggling favorite:`, contact.name);
     
-    // SIMPLIFIED APPROACH: Just call the toggle API and refresh persons list
     if (user && token) {
+      // OPTIMISTIC UPDATE: Toggle favorite status immediately
+      setPersons(prevPersons => 
+        prevPersons.map(person => 
+          person.id === contact.id 
+            ? { ...person, is_favorite: !person.is_favorite }
+            : person
+        )
+      );
+      
       try {
         const result = await apiService.post(`/favorites/${contact.id}`, {}, token);
         console.log('🌐 Favorite toggled successfully:', result);
         
-        // Refresh the main persons list which now includes is_favorite field
-        await fetchPersons();
+        // Optimistic update is sufficient - no need to refetch
       } catch (error) {
         console.log('🌐 Backend toggle failed:', error.message);
+        // Revert optimistic update by fetching fresh data
+        await fetchPersons();
       }
     }
   };
@@ -96,16 +116,24 @@ function AuthenticatedApp() {
   const handleClearRecent = async () => {
     console.log('🗑️ Clearing recent contacts');
     
-    // SIMPLIFIED: Call API to clear recents and refresh persons list
     if (user && token) {
+      // OPTIMISTIC UPDATE: Clear all last_accessed_at timestamps immediately
+      setPersons(prevPersons => 
+        prevPersons.map(person => ({ 
+          ...person, 
+          last_accessed_at: null 
+        }))
+      );
+      
       try {
         await apiService.delete('/recents', token);
         console.log('🌐 Cleared recent contacts on backend');
         
-        // Refresh the main persons list which now has updated last_accessed_at fields
-        await fetchPersons();
+        // Optimistic update is sufficient
       } catch (error) {
         console.log('🌐 Backend clear failed:', error.message);
+        // Revert optimistic update by fetching fresh data
+        await fetchPersons();
       }
     }
   };
@@ -113,16 +141,24 @@ function AuthenticatedApp() {
   const handleClearFavorites = async () => {
     console.log('🗑️ Clearing favorites');
     
-    // SIMPLIFIED: Call API to clear favorites and refresh persons list
     if (user && token) {
+      // OPTIMISTIC UPDATE: Clear all is_favorite flags immediately
+      setPersons(prevPersons => 
+        prevPersons.map(person => ({ 
+          ...person, 
+          is_favorite: false 
+        }))
+      );
+      
       try {
         await apiService.delete('/favorites', token);
         console.log('🌐 Cleared favorites on backend');
         
-        // Refresh the main persons list which now has updated is_favorite fields
-        await fetchPersons();
+        // Optimistic update is sufficient
       } catch (error) {
         console.log('🌐 Backend clear failed:', error.message);
+        // Revert optimistic update by fetching fresh data
+        await fetchPersons();
       }
     }
   };
@@ -152,6 +188,7 @@ function AuthenticatedApp() {
             favorites={favorites}
             onToggleFavorite={handleToggleFavorite}
             onClearRecent={handleClearRecent}
+            onContactClick={handleContactClick}
           />
         );
       case 'favorites':

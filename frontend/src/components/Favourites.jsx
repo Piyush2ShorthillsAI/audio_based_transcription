@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import ContactCard from './ContactCard';
 import './ContactsList.css';
 
@@ -6,8 +6,12 @@ const Favourites = ({
   favorites, 
   onToggleFavorite, 
   onClearFavorites,
-  onContactClick 
+  onContactClick
 }) => {
+  const [isRestoringScroll, setIsRestoringScroll] = useState(false);
+  const contactsListRef = useRef(null);
+  const scrollTimeoutRef = useRef(null);
+  const SCROLL_POSITION_KEY = 'favourites_scrollPosition';
   const [showConfirmClear, setShowConfirmClear] = useState(false);
 
   const handleClearFavorites = () => {
@@ -30,6 +34,133 @@ const Favourites = ({
   };
 
   const stats = getFavoriteStats();
+
+  // Save scroll position 
+  const saveScrollPosition = () => {
+    if (contactsListRef.current && !isRestoringScroll) {
+      const scrollTop = contactsListRef.current.scrollTop;
+      window.sessionStorage.setItem(SCROLL_POSITION_KEY, scrollTop.toString());
+      console.log('💾 SAVED scroll position:', scrollTop);
+    }
+  };
+
+  // Contact click handler
+  const handleContactClickWithScroll = (contact) => {
+    console.log('🔥 CONTACT CLICKED - SAVING SCROLL NOW!');
+    console.log('🔥 Current scroll position:', contactsListRef.current?.scrollTop);
+    
+    if (contactsListRef.current) {
+      const currentScroll = contactsListRef.current.scrollTop;
+      console.log('🔥 Explicitly saving:', currentScroll);
+      
+      // Force save immediately
+      window.sessionStorage.setItem(SCROLL_POSITION_KEY, currentScroll.toString());
+      
+      console.log('🔥 Verification - what was saved:', window.sessionStorage.getItem(SCROLL_POSITION_KEY));
+    } else {
+      console.log('🔥 ERROR - contactsListRef.current is null!');
+    }
+    
+    if (onContactClick) {
+      onContactClick(contact);
+    }
+  };
+
+  // EXACT COPY FROM ALLCONTACTS: Restore scroll position
+  useEffect(() => {
+    console.log('🚀 COMPONENT MOUNTED/UPDATED - Loading:', false, 'Favorites:', favorites?.length);
+    
+    if (!favorites || favorites.length === 0) {
+      console.log('🚀 Skipping restore - not ready yet');
+      return;
+    }
+    
+    const savedScrollPosition = window.sessionStorage.getItem(SCROLL_POSITION_KEY);
+    console.log('🔍 CHECKING STORAGE - Saved position:', savedScrollPosition);
+    console.log('🔍 contactsListRef.current exists:', !!contactsListRef.current);
+    
+    if (savedScrollPosition && contactsListRef.current) {
+      const scrollTop = parseInt(savedScrollPosition, 10);
+      console.log('🔍 ATTEMPTING RESTORE TO:', scrollTop);
+      
+      // Set flag to prevent saving during restoration
+      setIsRestoringScroll(true);
+      
+      // Try multiple timing approaches
+      const attemptRestore = () => {
+        if (contactsListRef.current) {
+          console.log('🔍 Setting scrollTop to:', scrollTop);
+          contactsListRef.current.scrollTop = scrollTop;
+          
+          // Check if it worked
+          setTimeout(() => {
+            if (contactsListRef.current) {
+              const actualScroll = contactsListRef.current.scrollTop;
+              console.log('🔍 After setting, actual scroll is:', actualScroll);
+            }
+          }, 50);
+          
+          // Clear restoration flag
+          setTimeout(() => {
+            setIsRestoringScroll(false);
+          }, 200);
+        }
+      };
+      
+      // Try immediate
+      attemptRestore();
+      
+      // Try with requestAnimationFrame
+      requestAnimationFrame(() => {
+        attemptRestore();
+      });
+      
+      // Try with timeout
+      setTimeout(() => {
+        attemptRestore();
+      }, 100);
+      
+    } else if (!savedScrollPosition) {
+      console.log('🔍 No saved scroll position found');
+    } else if (!contactsListRef.current) {
+      console.log('🔍 contactsListRef.current is null');
+    }
+  }, [favorites?.length]);
+
+  // EXACT COPY FROM ALLCONTACTS: Scroll event handler with throttling
+  useEffect(() => {
+    const contactsList = contactsListRef.current;
+    if (!contactsList) return;
+    
+    const handleScroll = () => {
+      const scrollTop = contactsList.scrollTop;
+      
+      // Throttle saves to avoid excessive storage writes
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+      
+      scrollTimeoutRef.current = setTimeout(() => {
+        saveScrollPosition();
+      }, 200); // Save 200ms after user stops scrolling
+    };
+    
+    contactsList.addEventListener('scroll', handleScroll, { passive: true });
+    
+    return () => {
+      contactsList.removeEventListener('scroll', handleScroll);
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Save scroll position when component unmounts
+  useEffect(() => {
+    return () => {
+      saveScrollPosition();
+    };
+  }, []);
 
   return (
     <div className="contacts-container">
@@ -80,8 +211,9 @@ const Favourites = ({
         <span>Your most important contacts are saved here</span>
       </div>
 
+
       {/* Favorites List */}
-      <div className="contacts-list">
+      <div className="contacts-list" ref={contactsListRef}>
         {favorites.length === 0 ? (
           <div className="empty-state">
             <div className="empty-icon">💝</div>
@@ -104,7 +236,7 @@ const Favourites = ({
                 contact={contact}
                 isFavorite={true}
                 onToggleFavorite={onToggleFavorite}
-                onViewContact={onContactClick} // Now viewing favorites also adds to recents
+                onViewContact={handleContactClickWithScroll} // Save scroll before navigation
                 showHeart={true}
                 variant="favorite"
               />

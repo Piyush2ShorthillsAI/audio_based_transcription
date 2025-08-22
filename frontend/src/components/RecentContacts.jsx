@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import ContactCard from './ContactCard';
 import './ContactsList.css';
 
@@ -6,8 +6,13 @@ const RecentContacts = ({
   recentContacts, 
   favorites, 
   onToggleFavorite, 
-  onClearRecent 
+  onClearRecent,
+  onContactClick
 }) => {
+  const [isRestoringScroll, setIsRestoringScroll] = useState(false);
+  const contactsListRef = useRef(null);
+  const scrollTimeoutRef = useRef(null);
+  const SCROLL_POSITION_KEY = 'recentContacts_scrollPosition';
   const formatTimestamp = (timestamp) => {
     const accessTime = new Date(timestamp);
     const today = new Date();
@@ -40,6 +45,85 @@ const RecentContacts = ({
     return `${dateString} at ${timeString}`;
   };
 
+  // Save scroll position 
+  const saveScrollPosition = () => {
+    if (contactsListRef.current && !isRestoringScroll) {
+      const scrollTop = contactsListRef.current.scrollTop;
+      window.sessionStorage.setItem(SCROLL_POSITION_KEY, scrollTop.toString());
+      console.log('💾 SAVED recent scroll:', scrollTop);
+    }
+  };
+
+  // Contact click handler
+  const handleContactClickWithScroll = (contact) => {
+    console.log('🔥 RECENT CONTACT CLICKED - saving scroll...');
+    if (contactsListRef.current) {
+      const currentScroll = contactsListRef.current.scrollTop;
+      window.sessionStorage.setItem(SCROLL_POSITION_KEY, currentScroll.toString());
+      console.log('🔥 RECENT: Saved scroll position:', currentScroll);
+    }
+    if (onContactClick) {
+      onContactClick(contact);
+    }
+  };
+
+  // SCROLL PRESERVATION: Restore scroll position
+  useEffect(() => {
+    if (!recentContacts || recentContacts.length === 0) return;
+    
+    const savedScrollPosition = window.sessionStorage.getItem(SCROLL_POSITION_KEY);
+    console.log('🔍 RECENT: Checking for saved scroll:', savedScrollPosition);
+    
+    if (savedScrollPosition && contactsListRef.current) {
+      const scrollTop = parseInt(savedScrollPosition, 10);
+      setIsRestoringScroll(true);
+      
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+                  if (contactsListRef.current) {
+          contactsListRef.current.scrollTop = scrollTop;
+          console.log('📍 RECENT: Restored scroll to:', scrollTop);
+          setTimeout(() => setIsRestoringScroll(false), 100);
+        }
+        });
+      });
+    }
+  }, [recentContacts?.length]);
+
+  // SCROLL PRESERVATION: Scroll event handler
+  useEffect(() => {
+    const contactsList = contactsListRef.current;
+    if (!contactsList) return;
+    
+    const handleScroll = () => {
+      const scrollTop = contactsList.scrollTop;
+      
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+      
+      scrollTimeoutRef.current = setTimeout(() => {
+        saveScrollPosition();
+      }, 200);
+    };
+    
+    contactsList.addEventListener('scroll', handleScroll, { passive: true });
+    
+    return () => {
+      contactsList.removeEventListener('scroll', handleScroll);
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // SCROLL PRESERVATION: Save on unmount
+  useEffect(() => {
+    return () => {
+      saveScrollPosition();
+    };
+  }, []);
+
   // Ensure we always limit to exactly 10 most recent contacts
   const displayedContacts = recentContacts ? recentContacts.slice(0, 10) : [];
 
@@ -65,6 +149,8 @@ const RecentContacts = ({
         )}
       </div>
 
+
+
       {/* Info Banner */}
       <div className="info-banner">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -80,7 +166,7 @@ const RecentContacts = ({
       </div>
 
       {/* Recent Contacts List */}
-      <div className="contacts-list" style={{maxHeight: '600px', overflowY: 'auto'}}>
+      <div className="contacts-list" style={{maxHeight: '650px', overflowY: 'auto', paddingBottom: '32px'}} ref={contactsListRef}>
         {displayedContacts.length === 0 ? (
           <div className="empty-state">
             <div className="empty-icon">⏰</div>
@@ -94,7 +180,7 @@ const RecentContacts = ({
                 contact={item.contact}
                 isFavorite={favorites.some(fav => fav.id === item.contact.id)}
                 onToggleFavorite={onToggleFavorite}
-                onViewContact={null} // No need to add to recent again
+                onViewContact={handleContactClickWithScroll} // Save scroll before navigation
                 showHeart={true}
                 variant="recent"
               />

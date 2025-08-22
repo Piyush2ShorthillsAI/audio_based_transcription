@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import './ContactCard.css';
 
-const ContactCard = ({ 
+const ContactCard = React.memo(({ 
   contact, 
   isFavorite = false, 
   onToggleFavorite, 
@@ -86,6 +86,8 @@ const ContactCard = ({
       </div>
     </div>
   );
-};
+});
+
+ContactCard.displayName = 'ContactCard';
 
 export default ContactCard;
