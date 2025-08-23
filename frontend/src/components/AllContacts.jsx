@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import ContactCard from './ContactCard';
+import ContactCardWithMessagePreview from './ContactCardWithMessagePreview';
 import './ContactsList.css';
 
 const AllContacts = React.memo(({ 
@@ -267,7 +267,7 @@ const AllContacts = React.memo(({
           </div>
         ) : (
           filteredAndSortedContacts.map(contact => (
-            <ContactCard
+            <ContactCardWithMessagePreview
               key={contact.id}
               contact={contact}
               isFavorite={favoritesSet.has(contact.id)}

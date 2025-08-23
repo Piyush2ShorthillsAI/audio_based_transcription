@@ -10,6 +10,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 from services.db_service import database, connect_db, disconnect_db, create_tables
 from services.db_service.models import Contact
+from services.audio_service import AudioServiceMinimal
 from datetime import datetime
 from services.authservice import AuthService, UserSignup, UserLogin, TokenResponse, User
 from pydantic import BaseModel
@@ -56,6 +57,10 @@ class ContactResponse(BaseModel):
 # Initialize AuthService with database
 def get_auth_service():
     return AuthService(database)
+
+# Initialize AudioService
+def get_audio_service():
+    return AudioServiceMinimal(database)
 
 # Dependency to get current user from token
 async def get_current_user(
@@ -468,6 +473,282 @@ async def clear_favorite_contacts(current_user: User = Depends(get_current_user)
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+# =============================================================================
+# AUDIO PROCESSING ENDPOINTS
+# =============================================================================
+
+@app.post("/audio/upload")
+async def upload_audio(
+    audio: UploadFile = File(...),
+    title: str = Form(...),
+    contact_id: Optional[str] = Form(None),
+    audio_type: Optional[str] = Form(None),
+    current_user: User = Depends(get_current_user),
+    audio_service: AudioServiceMinimal = Depends(get_audio_service)
+):
+    """Upload an audio file for processing"""
+    try:
+        # Validate file type
+        if not audio.content_type or not audio.content_type.startswith('audio/'):
+            raise HTTPException(status_code=400, detail="File must be an audio file")
+        
+        # Validate file size (max 50MB)
+        if hasattr(audio, 'size') and audio.size > 50 * 1024 * 1024:
+            raise HTTPException(status_code=400, detail="File too large. Maximum size is 50MB")
+        
+        # Save audio file
+        result = await audio_service.save_audio_file(
+            audio_file=audio,
+            user_id=current_user.id,
+            title=title,
+            contact_id=contact_id,
+            audio_type=audio_type
+        )
+        
+        return {
+            "message": "Audio uploaded successfully",
+            "recording_id": result["recording_id"],
+            "filename": result["filename"],
+            "file_size": result["file_size"],
+            "duration": result["duration"],
+            "status": result["status"]
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to upload audio: {str(e)}")
+
+@app.post("/audio/generate-dual-email")
+async def generate_dual_audio_email(
+    request: dict,
+    current_user: User = Depends(get_current_user),
+    audio_service: AudioServiceMinimal = Depends(get_audio_service)
+):
+    """Generate professional email directly from dual audio files using Gemini 2.5 Pro"""
+    try:
+        # Debug: Print the entire request
+        print(f"DEBUG: Full request received: {request}")
+        print(f"DEBUG: Request keys: {list(request.keys())}")
+        
+        # Try both parameter naming conventions
+        relationship_recording_id = (
+            request.get("action_recording_id") or 
+            request.get("relationship_recording_id")
+        )
+        content_recording_id = (
+            request.get("context_recording_id") or 
+            request.get("content_recording_id")
+        )
+        
+        print(f"DEBUG: relationship_recording_id = {relationship_recording_id}")
+        print(f"DEBUG: content_recording_id = {content_recording_id}")
+        
+        contact_id = request.get("contact_id")
+        recipient_name = request.get("recipient_name", "")
+        recipient_email = request.get("recipient_email", "")
+
+        if not relationship_recording_id or not content_recording_id:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Missing recording IDs. Got relationship: {relationship_recording_id}, content: {content_recording_id}"
+            )
+
+        # Get contact info if contact_id provided
+        if contact_id:
+            print(f"DEBUG: Looking up contact {contact_id}")
+            contact_query = """
+            SELECT name, email FROM crm_contacts
+            WHERE id = :contact_id AND user_id = :user_id
+            """
+            contact_result = await database.fetch_one(contact_query, {
+                "contact_id": contact_id,
+                "user_id": current_user.id
+            })
+
+            if contact_result:
+                recipient_name = contact_result["name"]
+                recipient_email = contact_result["email"]
+                print(f"DEBUG: Found contact: {recipient_name} <{recipient_email}>")
+
+        print("DEBUG: About to call audio service...")
+        
+        # Generate email using DIRECT audio processing
+        result = await audio_service.generate_email_from_dual_audio_direct(
+            relationship_recording_id=relationship_recording_id,
+            content_recording_id=content_recording_id,
+            user_id=current_user.id,
+            recipient_name=recipient_name,
+            recipient_email=recipient_email,
+            relationship="professional"
+        )
+
+        print("DEBUG: Audio service completed successfully")
+        return {
+            "message": "Email generated successfully from direct audio processing",
+            "email": result["email"],
+            "analysis": result.get("analysis", {}),
+            "processing_method": result["processing_method"]
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"ERROR in generate_dual_audio_email: {str(e)}")
+        import traceback
+        print("FULL STACK TRACE:")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Failed to generate email: {str(e)}")
+
+
+@app.post("/audio/{recording_id}/transcribe")
+async def transcribe_audio(
+    recording_id: str,
+    transcription_method: str = "whisper",
+    current_user: User = Depends(get_current_user),
+    audio_service: AudioServiceMinimal = Depends(get_audio_service)
+):
+    """Transcribe a single audio recording"""
+    try:
+        result = await audio_service.transcribe_recording(
+            recording_id=recording_id,
+            user_id=current_user.id,
+            transcription_method=transcription_method
+        )
+        
+        return {
+            "message": "Audio transcribed successfully",
+            "transcription_id": result["transcription_id"],
+            "text": result["text"],
+            "enhanced_text": result["enhanced_text"],
+            "confidence": result["confidence"],
+            "language": result["language"],
+            "processing_time": result["processing_time"],
+            "method": result["method"]
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to transcribe audio: {str(e)}")
+
+@app.get("/audio/recordings")
+async def get_audio_recordings(
+    limit: int = 50,
+    offset: int = 0,
+    current_user: User = Depends(get_current_user),
+    audio_service: AudioServiceMinimal = Depends(get_audio_service)
+):
+    """Get all audio recordings for the current user"""
+    try:
+        recordings = await audio_service.get_user_recordings(
+            user_id=current_user.id,
+            limit=limit,
+            offset=offset
+        )
+        
+        return {
+            "recordings": recordings,
+            "total": len(recordings),
+            "limit": limit,
+            "offset": offset
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get recordings: {str(e)}")
+
+@app.get("/audio/recordings/{recording_id}")
+async def get_audio_recording(
+    recording_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Get details for a specific audio recording"""
+    try:
+        query = """
+        SELECT * FROM audio_recordings 
+        WHERE id = :recording_id AND user_id = :user_id
+        """
+        recording = await database.fetch_one(query, {
+            "recording_id": recording_id,
+            "user_id": current_user.id
+        })
+        
+        if not recording:
+            raise HTTPException(status_code=404, detail="Recording not found")
+        
+        return dict(recording)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get recording: {str(e)}")
+
+@app.delete("/audio/recordings/{recording_id}")
+async def delete_audio_recording(
+    recording_id: str,
+    current_user: User = Depends(get_current_user),
+    audio_service: AudioServiceMinimal = Depends(get_audio_service)
+):
+    """Delete an audio recording"""
+    try:
+        success = await audio_service.delete_recording(
+            recording_id=recording_id,
+            user_id=current_user.id
+        )
+        
+        if not success:
+            raise HTTPException(status_code=404, detail="Recording not found or could not be deleted")
+        
+        return {"message": "Recording deleted successfully"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to delete recording: {str(e)}")
+
+@app.get("/contacts/{contact_id}/audio")
+async def get_contact_audio_recordings(
+    contact_id: str,
+    audio_type: Optional[str] = None,
+    current_user: User = Depends(get_current_user)
+):
+    """Get all audio recordings associated with a specific contact, optionally filtered by audio_type"""
+    try:
+        # Build query with optional audio_type filter
+        if audio_type:
+            query = """
+            SELECT * FROM audio_recordings 
+            WHERE contact_id = :contact_id AND user_id = :user_id AND audio_type = :audio_type
+            ORDER BY created_at DESC
+            """
+            params = {
+                "contact_id": contact_id,
+                "user_id": current_user.id,
+                "audio_type": audio_type
+            }
+        else:
+            query = """
+            SELECT * FROM audio_recordings 
+            WHERE contact_id = :contact_id AND user_id = :user_id
+            ORDER BY created_at DESC
+            """
+            params = {
+                "contact_id": contact_id,
+                "user_id": current_user.id
+            }
+            
+        recordings = await database.fetch_all(query, params)
+        
+        return {
+            "contact_id": contact_id,
+            "audio_type": audio_type,
+            "recordings": [dict(recording) for recording in recordings],
+            "total": len(recordings)
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get contact recordings: {str(e)}")
 
 # Health check endpoint (public)
 @app.get("/health")

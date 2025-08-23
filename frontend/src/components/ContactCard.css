@@ -202,7 +202,8 @@
   }
   
   .heart-button,
-  .view-button {
+  .view-button,
+  .message-button {
     width: 32px;
     height: 32px;
   }

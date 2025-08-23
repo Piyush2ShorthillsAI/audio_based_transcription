@@ -11,8 +11,10 @@ const ContactCard = React.memo(({
   variant = 'default' 
 }) => {
   const handleCardClick = (e) => {
-    // Don't trigger anything on card click - only specific buttons
-    e.preventDefault();
+    // Only prevent default if clicking directly on card, not on buttons
+    if (e.target === e.currentTarget) {
+      e.preventDefault();
+    }
   };
 
   const handleHeartClick = (e) => {
@@ -25,6 +27,7 @@ const ContactCard = React.memo(({
 
   const handleViewClick = (e) => {
     e.stopPropagation();
+    console.log('👁️ View button clicked for:', contact.name);
     // Don't prevent default - allow Link navigation
     // Add to recent contacts if handler provided
     if (onViewContact) {

@@ -1,0 +1,100 @@
+nohup: ignoring input
+INFO:     Will watch for changes in these directories: ['/home/shtlp_0170/Videos/audio_based_mail_body_generation/backend']
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [52814] using WatchFiles
+INFO:     Started server process [52821]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+🔗 Connected to PostgreSQL database
+📊 Database tables created successfully
+INFO:     127.0.0.1:46736 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54868 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54876 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58938 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58940 - "POST /auth/login HTTP/1.1" 200 OK
+🔍 GeminiService init - Current working dir: /home/shtlp_0170/Videos/audio_based_mail_body_generation/backend
+🔍 GeminiService init - .env file path: /home/shtlp_0170/Videos/audio_based_mail_body_generation/backend/.env
+🔍 GeminiService init - .env file exists: True
+🔍 GeminiService init - API key found: True
+🔍 GeminiService init - API key starts with: AIzaSyC_qb...
+INFO:     127.0.0.1:58944 - "POST /audio/upload HTTP/1.1" 422 Unprocessable Entity
+🔍 GeminiService init - Current working dir: /home/shtlp_0170/Videos/audio_based_mail_body_generation/backend
+🔍 GeminiService init - .env file path: /home/shtlp_0170/Videos/audio_based_mail_body_generation/backend/.env
+🔍 GeminiService init - .env file exists: True
+🔍 GeminiService init - API key found: True
+🔍 GeminiService init - API key starts with: AIzaSyC_qb...
+INFO:     127.0.0.1:58952 - "GET /audio/recordings HTTP/1.1" 200 OK
+WARNING:  WatchFiles detected changes in 'monitor_realtime.py', 'debug_500_live.py', 'test_http_endpoints.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [52821]
+📴 Disconnected from PostgreSQL database
+INFO:     Started server process [53270]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'services/audio_service/audio_service_minimal.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [53270]
+🔗 Connected to PostgreSQL database
+📊 Database tables created successfully
+📴 Disconnected from PostgreSQL database
+INFO:     Started server process [53334]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'main.py', 'test_http_endpoints.py', 'monitor_realtime.py', 'debug_500_live.py', 'services/audio_service/audio_service_minimal.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [53334]
+🔗 Connected to PostgreSQL database
+📊 Database tables created successfully
+📴 Disconnected from PostgreSQL database
+INFO:     Started server process [53393]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+🔗 Connected to PostgreSQL database
+📊 Database tables created successfully
+INFO:     127.0.0.1:39438 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39450 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39450 - "GET /persons HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39438 - "GET /persons HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47924 - "OPTIONS /audio/upload HTTP/1.1" 200 OK
+🔍 GeminiService init - Current working dir: /home/shtlp_0170/Videos/audio_based_mail_body_generation/backend
+🔍 GeminiService init - .env file path: /home/shtlp_0170/Videos/audio_based_mail_body_generation/backend/.env
+🔍 GeminiService init - .env file exists: True
+🔍 GeminiService init - API key found: True
+🔍 GeminiService init - API key starts with: AIzaSyC_qb...
+INFO:     127.0.0.1:47924 - "POST /audio/upload HTTP/1.1" 200 OK
+🔍 GeminiService init - Current working dir: /home/shtlp_0170/Videos/audio_based_mail_body_generation/backend
+🔍 GeminiService init - .env file path: /home/shtlp_0170/Videos/audio_based_mail_body_generation/backend/.env
+🔍 GeminiService init - .env file exists: True
+🔍 GeminiService init - API key found: True
+🔍 GeminiService init - API key starts with: AIzaSyC_qb...
+INFO:     127.0.0.1:47924 - "POST /audio/upload HTTP/1.1" 200 OK
+🔍 GeminiService init - Current working dir: /home/shtlp_0170/Videos/audio_based_mail_body_generation/backend
+🔍 GeminiService init - .env file path: /home/shtlp_0170/Videos/audio_based_mail_body_generation/backend/.env
+🔍 GeminiService init - .env file exists: True
+🔍 GeminiService init - API key found: True
+🔍 GeminiService init - API key starts with: AIzaSyC_qb...
+Error in direct audio processing: Could not find audio file paths
+INFO:     127.0.0.1:47924 - "POST /audio/generate-dual-email HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:48446 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48448 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48448 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48446 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48446 - "GET /persons HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48448 - "GET /persons HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48446 - "GET /persons HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48448 - "GET /persons HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35830 - "OPTIONS /favorites/4167e718-e86a-4b43-906c-bd5fda882761 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35830 - "POST /favorites/4167e718-e86a-4b43-906c-bd5fda882761 HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:35830 - "OPTIONS /persons HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35830 - "GET /persons HTTP/1.1" 401 Unauthorized
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [53393]
+📴 Disconnected from PostgreSQL database

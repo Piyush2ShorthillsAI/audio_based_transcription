@@ -5,6 +5,7 @@ import ContactDetail from './ContactDetail';
 import AllContacts from './components/AllContacts';
 import RecentContacts from './components/RecentContacts';
 import Favourites from './components/Favourites';
+// import NavigationTest from '../DEBUG_TEST'; // Debug component - removed
 
 import './App.css';
 

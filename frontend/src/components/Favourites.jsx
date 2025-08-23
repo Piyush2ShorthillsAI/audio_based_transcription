@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import ContactCard from './ContactCard';
+import ContactCardWithMessagePreview from './ContactCardWithMessagePreview';
 import './ContactsList.css';
 
 const Favourites = ({ 
@@ -231,7 +231,7 @@ const Favourites = ({
         ) : (
           <>
             {favorites.map(contact => (
-              <ContactCard
+              <ContactCardWithMessagePreview
                 key={contact.id}
                 contact={contact}
                 isFavorite={true}

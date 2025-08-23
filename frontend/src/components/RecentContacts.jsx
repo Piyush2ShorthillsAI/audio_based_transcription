@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import ContactCard from './ContactCard';
+import ContactCardWithMessagePreview from './ContactCardWithMessagePreview';
 import './ContactsList.css';
 
 const RecentContacts = ({ 
@@ -176,7 +176,7 @@ const RecentContacts = ({
         ) : (
           displayedContacts.map(item => (
             <div key={`${item.contact.id}-${item.accessedAt}`} className="recent-contact-wrapper">
-              <ContactCard
+              <ContactCardWithMessagePreview
                 contact={item.contact}
                 isFavorite={favorites.some(fav => fav.id === item.contact.id)}
                 onToggleFavorite={onToggleFavorite}
