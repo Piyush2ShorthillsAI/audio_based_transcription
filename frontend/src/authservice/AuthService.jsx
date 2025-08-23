@@ -312,46 +312,56 @@ export const LoginForm = ({ onToggleMode }) => {
   return (
     <div className="auth-container">
       <div className="auth-card">
-        <h2>Login</h2>
+        <div className="auth-header">
+          <h2>Welcome Back</h2>
+          <p className="auth-subtitle">Sign in to your account</p>
+        </div>
         
-        {error && <div className="error-message">{error}</div>}
+        {error && <div className="error-message">⚠️ {error}</div>}
         
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label htmlFor="login">Email or Username:</label>
-            <input
-              type="text"
-              id="login"
-              name="login"
-              value={formData.login}
-              onChange={handleChange}
-              required
-              placeholder="Enter email or username"
-            />
+            <label htmlFor="login">Email or Username</label>
+            <div className="input-wrapper">
+              <span className="input-icon">👤</span>
+              <input
+                type="text"
+                id="login"
+                name="login"
+                value={formData.login}
+                onChange={handleChange}
+                required
+                placeholder="Enter your email or username"
+              />
+            </div>
           </div>
 
           <div className="form-group">
-            <label htmlFor="password">Password:</label>
-            <input
-              type="password"
-              id="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              required
-              placeholder="Enter password"
-            />
+            <label htmlFor="password">Password</label>
+            <div className="input-wrapper">
+              <span className="input-icon">🔒</span>
+              <input
+                type="password"
+                id="password"
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                required
+                placeholder="Enter your password"
+              />
+            </div>
           </div>
 
           <button type="submit" className="auth-button" disabled={loading}>
-            {loading ? 'Logging in...' : 'Login'}
+            {loading && <span className="loading-spinner"></span>}
+            {loading ? 'Signing In...' : 'Sign In'}
           </button>
         </form>
 
         <p className="toggle-mode">
-          Don't have an account?{' '}
+          New to our platform?
           <button type="button" onClick={onToggleMode}>
-            Sign up
+            Create Account
           </button>
         </p>
       </div>
@@ -420,83 +430,100 @@ export const SignupForm = ({ onToggleMode }) => {
   return (
     <div className="auth-container">
       <div className="auth-card">
-        <h2>Sign Up</h2>
+        <div className="auth-header">
+          <h2>Join Us Today</h2>
+          <p className="auth-subtitle">Create your new account</p>
+        </div>
         
-        {error && <div className="error-message">{error}</div>}
+        {error && <div className="error-message">⚠️ {error}</div>}
         
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label htmlFor="username">Username:</label>
-            <input
-              type="text"
-              id="username"
-              name="username"
-              value={formData.username}
-              onChange={handleChange}
-              required
-              placeholder="Enter username"
-            />
+            <label htmlFor="username">Username</label>
+            <div className="input-wrapper">
+              <span className="input-icon">👤</span>
+              <input
+                type="text"
+                id="username"
+                name="username"
+                value={formData.username}
+                onChange={handleChange}
+                required
+                placeholder="Choose a username"
+              />
+            </div>
           </div>
 
           <div className="form-group">
-            <label htmlFor="email">Email:</label>
-            <input
-              type="email"
-              id="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              required
-              placeholder="Enter email"
-            />
+            <label htmlFor="email">Email Address</label>
+            <div className="input-wrapper">
+              <span className="input-icon">📧</span>
+              <input
+                type="email"
+                id="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                required
+                placeholder="Enter your email"
+              />
+            </div>
           </div>
 
           <div className="form-group">
-            <label htmlFor="password">Password:</label>
-            <input
-              type="password"
-              id="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              required
-              placeholder="Enter password"
-            />
+            <label htmlFor="password">Password</label>
+            <div className="input-wrapper">
+              <span className="input-icon">🔒</span>
+              <input
+                type="password"
+                id="password"
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                required
+                placeholder="Create a secure password"
+              />
+            </div>
           </div>
 
           <div className="form-group">
-            <label htmlFor="confirmPassword">Confirm Password:</label>
-            <input
-              type="password"
-              id="confirmPassword"
-              name="confirmPassword"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              required
-              placeholder="Confirm password"
-            />
+            <label htmlFor="confirmPassword">Confirm Password</label>
+            <div className="input-wrapper">
+              <span className="input-icon">🔐</span>
+              <input
+                type="password"
+                id="confirmPassword"
+                name="confirmPassword"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                required
+                placeholder="Confirm your password"
+              />
+            </div>
           </div>
 
           <div className="form-group">
-            <label htmlFor="photo">Profile Photo (optional):</label>
+            <label htmlFor="photo">Profile Photo (Optional)</label>
             <input
               type="file"
               id="photo"
               name="photo"
               onChange={handlePhotoChange}
               accept="image/*"
+              placeholder="📷 Upload your photo"
             />
           </div>
 
           <button type="submit" className="auth-button" disabled={loading}>
-            {loading ? 'Creating account...' : 'Sign Up'}
+            {loading && <span className="loading-spinner"></span>}
+            {loading ? 'Creating Account...' : 'Create Account'}
           </button>
         </form>
 
         <p className="toggle-mode">
-          Already have an account?{' '}
+          Already have an account?
           <button type="button" onClick={onToggleMode}>
-            Login
+            Sign In
           </button>
         </p>
       </div>
