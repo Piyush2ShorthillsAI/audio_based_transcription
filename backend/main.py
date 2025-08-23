@@ -633,6 +633,41 @@ async def save_approved_email(request: dict, current_user: User = Depends(get_cu
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/emails/approved")
+async def get_approved_emails(
+    contact_id: str = None,
+    current_user: User = Depends(get_current_user)
+):
+    """Get approved emails for the current user, optionally filtered by contact"""
+    try:
+        if contact_id:
+            # Get approved emails for specific contact
+            query = """
+            SELECT id, contact_id, recording_id, email_content, created_at
+            FROM approved_emails 
+            WHERE user_id = :user_id AND contact_id = :contact_id
+            ORDER BY created_at DESC
+            """
+            emails = await database.fetch_all(query, {
+                "user_id": current_user.id,
+                "contact_id": contact_id
+            })
+        else:
+            # Get all approved emails for user
+            query = """
+            SELECT id, contact_id, recording_id, email_content, created_at
+            FROM approved_emails 
+            WHERE user_id = :user_id
+            ORDER BY created_at DESC
+            """
+            emails = await database.fetch_all(query, {"user_id": current_user.id})
+        
+        return {"emails": [dict(email) for email in emails]}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/audio/recordings")
 async def get_audio_recordings(
     limit: int = 50,

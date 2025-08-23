@@ -5,6 +5,7 @@ import ContactDetail from './ContactDetail';
 import AllContacts from './components/AllContacts';
 import RecentContacts from './components/RecentContacts';
 import Favourites from './components/Favourites';
+import MessagePreview from './components/MessagePreview';
 // import NavigationTest from '../DEBUG_TEST'; // Debug component - removed
 
 import './App.css';
@@ -259,6 +260,7 @@ function AuthenticatedApp() {
             </div>
           } />
           <Route path="/contact/:id" element={<ContactDetail />} />
+          <Route path="/message/:contactId" element={<MessagePreview isFullPage={true} />} />
         </Routes>
       </div>
     </Router>

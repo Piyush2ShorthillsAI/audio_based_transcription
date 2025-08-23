@@ -1,3 +1,99 @@
+/* Message Preview Page (Full Page Mode) */
+.message-preview-page {
+  min-height: 100vh;
+  background: white;
+  padding: 0;
+  overflow-y: auto;
+  width: 100%;
+}
+
+.message-preview-page.loading,
+.message-preview-page.error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.loading-spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid rgba(59, 130, 246, 0.3);
+  border-radius: 50%;
+  border-top-color: #3b82f6;
+  animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.error-message {
+  text-align: center;
+  background: white;
+  border-radius: 16px;
+  padding: 40px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e5e7eb;
+}
+
+.error-message h2 {
+  margin: 0 0 16px;
+  font-size: 24px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.error-message p {
+  margin: 0 0 24px;
+  color: #6b7280;
+}
+
+.close-button-error {
+  padding: 12px 24px;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.close-button-error:hover {
+  background: #1d4ed8;
+  transform: translateY(-1px);
+}
+
+/* Full page mode adjustments */
+.message-preview-page .message-preview-header {
+  border-radius: 0;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.message-preview-page .email-preview-section {
+  background: white;
+  border-bottom: none;
+}
+
+.message-preview-page .audio-recording-section {
+  background: white;
+}
+
+.message-preview-page .contact-info-section {
+  background: white;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.message-preview-page .stored-messages-section {
+  background: white;
+}
+
 /* Message Preview Modal */
 .message-preview-overlay {
   position: fixed;
@@ -135,6 +231,42 @@
   border-bottom: 1px solid #e5e7eb;
   background: #f9fafb;
 }
+
+.email-header-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.email-section-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.email-section-title svg {
+  width: 24px;
+  height: 24px;
+  color: #3b82f6;
+}
+
+.email-section-title h3 {
+  margin: 0 0 4px 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.email-section-title p {
+  margin: 0;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+
 
 .email-content {
   background: white;
@@ -328,15 +460,31 @@
 .audio-header {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
   margin-bottom: 16px;
   color: #374151;
   font-weight: 500;
 }
 
 .audio-header svg {
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
+  color: #3b82f6;
+  flex-shrink: 0;
+}
+
+.audio-header .header-text h4 {
+  margin: 0 0 2px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.audio-header .header-text p {
+  margin: 0;
+  font-size: 13px;
+  color: #6b7280;
+  font-weight: 400;
 }
 
 .audio-recorder-container {
@@ -787,4 +935,182 @@
 .edit-button svg {
   width: 16px;
   height: 16px;
+}
+
+/* Stored Messages Section */
+.stored-messages-section {
+  padding: 24px;
+  border-top: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+.stored-messages-header {
+  margin-bottom: 20px;
+}
+
+.stored-section-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.stored-section-title svg {
+  width: 24px;
+  height: 24px;
+  color: #3b82f6;
+}
+
+.stored-section-title h3 {
+  margin: 0 0 4px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.stored-section-title p {
+  margin: 0;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.stored-messages-content {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.loading-stored {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 40px;
+  justify-content: center;
+  color: #6b7280;
+}
+
+.loading-stored .spinner {
+  width: 20px;
+  height: 20px;
+}
+
+.messages-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.stored-message-item {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.message-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.message-date {
+  font-size: 14px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.message-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: 500;
+  margin-left: auto;
+}
+
+.message-status.approved {
+  background: #d1fae5;
+  color: #059669;
+}
+
+.message-status svg {
+  width: 14px;
+  height: 14px;
+}
+
+.message-content {
+  margin-bottom: 16px;
+}
+
+.message-content pre {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #374151;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  background: #f8f9fa;
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.message-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.copy-message-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.copy-message-button:hover {
+  background: #e5e7eb;
+  border-color: #9ca3af;
+}
+
+.copy-message-button svg {
+  width: 14px;
+  height: 14px;
+}
+
+.no-stored-messages {
+  text-align: center;
+  padding: 60px 20px;
+  color: #6b7280;
+}
+
+.no-stored-messages svg {
+  width: 48px;
+  height: 48px;
+  color: #d1d5db;
+  margin-bottom: 16px;
+}
+
+.no-stored-messages h4 {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.no-stored-messages p {
+  margin: 0;
+  font-size: 14px;
 }

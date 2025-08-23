@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import MessagePreview from './MessagePreview';
+import React from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import './ContactCard.css'; // Reuse existing styles
 
 const ContactCardWithMessagePreview = React.memo(({ 
@@ -11,7 +10,7 @@ const ContactCardWithMessagePreview = React.memo(({
   showHeart = true,
   variant = 'default' 
 }) => {
-  const [showMessagePreview, setShowMessagePreview] = useState(false);
+  const navigate = useNavigate();
 
   const handleCardClick = (e) => {
     // Only prevent default if clicking directly on card, not on buttons  
@@ -39,7 +38,7 @@ const ContactCardWithMessagePreview = React.memo(({
   const handleMessageClick = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    setShowMessagePreview(true);
+    navigate(`/message/${contact.id}`);
   };
 
   return (
@@ -106,12 +105,6 @@ const ContactCardWithMessagePreview = React.memo(({
           </Link>
         </div>
       </div>
-
-      <MessagePreview
-        contact={contact}
-        isOpen={showMessagePreview}
-        onClose={() => setShowMessagePreview(false)}
-      />
     </>
   );
 });
