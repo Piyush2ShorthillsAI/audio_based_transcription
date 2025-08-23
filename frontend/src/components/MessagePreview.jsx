@@ -12,6 +12,8 @@ const MessagePreview = ({ contact, isOpen, onClose }) => {
   const [generatedEmail, setGeneratedEmail] = useState(null);
   const [emailStatus, setEmailStatus] = useState('draft'); // draft, approved, rejected
   const [isLoadingAudios, setIsLoadingAudios] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedEmail, setEditedEmail] = useState('');
   const { user, token } = useAuth();
 
   // Reset state when modal opens/closes and fetch audio lists
@@ -22,6 +24,8 @@ const MessagePreview = ({ contact, isOpen, onClose }) => {
       setGeneratedEmail(null);
       setEmailStatus('draft');
       setIsProcessing(false);
+      setIsEditing(false);
+      setEditedEmail('');
       fetchAudioLists();
     } else {
       // Clear lists when closing to avoid stale data
@@ -30,12 +34,13 @@ const MessagePreview = ({ contact, isOpen, onClose }) => {
     }
   }, [isOpen, contact?.id]);
 
-  // Debug generatedEmail content
+  // Debug generatedEmail content and initialize edited version
   useEffect(() => {
     if (generatedEmail) {
       console.log('🔍 Generated email raw response:', generatedEmail);
       console.log('📧 Response type:', typeof generatedEmail);
       console.log('📧 Response length:', generatedEmail?.length);
+      setEditedEmail(generatedEmail); // Initialize edited version
     }
   }, [generatedEmail]);
 
@@ -134,9 +139,10 @@ const MessagePreview = ({ contact, isOpen, onClose }) => {
         console.log('Contact added to recents');
       }
 
-      // Copy email to clipboard
-      if (generatedEmail) {
-        await navigator.clipboard.writeText(generatedEmail);
+      // Copy email to clipboard (use edited version if available)
+      const emailToCopy = editedEmail || generatedEmail;
+      if (emailToCopy) {
+        await navigator.clipboard.writeText(emailToCopy);
         alert('Email content copied to clipboard!');
       }
 
@@ -148,6 +154,20 @@ const MessagePreview = ({ contact, isOpen, onClose }) => {
   const handleReject = () => {
     setEmailStatus('rejected');
     setGeneratedEmail(null);
+  };
+
+  const handleEdit = () => {
+    setIsEditing(true);
+  };
+
+  const handleSaveEdit = () => {
+    setGeneratedEmail(editedEmail);
+    setIsEditing(false);
+  };
+
+  const handleCancelEdit = () => {
+    setEditedEmail(generatedEmail); // Reset to original
+    setIsEditing(false);
   };
 
   if (!isOpen) return null;
@@ -181,34 +201,79 @@ const MessagePreview = ({ contact, isOpen, onClose }) => {
         {generatedEmail && (
           <div className="email-preview-section">
             <div className="email-content">
-              <div className="email-raw-response">
-                <pre>{generatedEmail}</pre>
-              </div>
+              {isEditing ? (
+                <div className="email-edit-mode">
+                  <textarea
+                    value={editedEmail}
+                    onChange={(e) => setEditedEmail(e.target.value)}
+                    className="email-edit-textarea"
+                    rows={20}
+                    placeholder="Edit your email content here..."
+                  />
+                  <div className="edit-actions">
+                    <button 
+                      className="save-edit-button" 
+                      onClick={handleSaveEdit}
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M20 6L9 17l-5-5"></path>
+                      </svg>
+                      Save Changes
+                    </button>
+                    <button 
+                      className="cancel-edit-button" 
+                      onClick={handleCancelEdit}
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                      </svg>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="email-raw-response">
+                  <pre>{editedEmail || generatedEmail}</pre>
+                </div>
+              )}
             </div>
 
-            <div className="email-actions">
-              <button 
-                className="reject-button" 
-                onClick={handleReject}
-                disabled={isProcessing}
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <line x1="18" y1="6" x2="6" y2="18"></line>
-                  <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
-                Reject
-              </button>
-              <button 
-                className="approve-button" 
-                onClick={handleApprove}
-                disabled={isProcessing}
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M20 6L9 17l-5-5"></path>
-                </svg>
-                Approve
-              </button>
-            </div>
+            {!isEditing && (
+              <div className="email-actions">
+                <button 
+                  className="reject-button" 
+                  onClick={handleReject}
+                  disabled={isProcessing}
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
+                  Reject
+                </button>
+                <button 
+                  className="edit-button" 
+                  onClick={handleEdit}
+                  disabled={isProcessing}
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="m18 2 4 4-14 14H4v-4L18 2z"></path>
+                  </svg>
+                  Edit
+                </button>
+                <button 
+                  className="approve-button" 
+                  onClick={handleApprove}
+                  disabled={isProcessing}
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M20 6L9 17l-5-5"></path>
+                  </svg>
+                  Approve
+                </button>
+              </div>
+            )}
           </div>
         )}
 

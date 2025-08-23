@@ -609,3 +609,112 @@
   max-height: 400px;
   overflow-y: auto;
 }
+
+/* Email edit mode styling */
+.email-edit-mode {
+  padding: 16px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border-left: 4px solid #ffc107;
+}
+
+.email-edit-textarea {
+  width: 100%;
+  min-height: 400px;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #333;
+  resize: vertical;
+  background: white;
+  margin-bottom: 12px;
+}
+
+.email-edit-textarea:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.edit-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.save-edit-button,
+.cancel-edit-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.save-edit-button {
+  background: #28a745;
+  color: white;
+}
+
+.save-edit-button:hover {
+  background: #218838;
+}
+
+.cancel-edit-button {
+  background: #6c757d;
+  color: white;
+}
+
+.cancel-edit-button:hover {
+  background: #5a6268;
+}
+
+.save-edit-button svg,
+.cancel-edit-button svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Edit button styling */
+.edit-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  background: #ffc107;
+  color: #212529;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 2px 4px rgba(255, 193, 7, 0.2);
+}
+
+.edit-button:hover {
+  background: #e0a800;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(255, 193, 7, 0.3);
+}
+
+.edit-button:disabled {
+  background: #f8f9fa;
+  color: #6c757d;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.edit-button svg {
+  width: 16px;
+  height: 16px;
+}
