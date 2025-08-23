@@ -602,37 +602,6 @@ async def generate_dual_audio_email(
         raise HTTPException(status_code=500, detail=f"Failed to generate email: {str(e)}")
 
 
-@app.post("/audio/{recording_id}/transcribe")
-async def transcribe_audio(
-    recording_id: str,
-    transcription_method: str = "whisper",
-    current_user: User = Depends(get_current_user),
-    audio_service: AudioServiceMinimal = Depends(get_audio_service)
-):
-    """Transcribe a single audio recording"""
-    try:
-        result = await audio_service.transcribe_recording(
-            recording_id=recording_id,
-            user_id=current_user.id,
-            transcription_method=transcription_method
-        )
-        
-        return {
-            "message": "Audio transcribed successfully",
-            "transcription_id": result["transcription_id"],
-            "text": result["text"],
-            "enhanced_text": result["enhanced_text"],
-            "confidence": result["confidence"],
-            "language": result["language"],
-            "processing_time": result["processing_time"],
-            "method": result["method"]
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to transcribe audio: {str(e)}")
-
 @app.get("/audio/recordings")
 async def get_audio_recordings(
     limit: int = 50,

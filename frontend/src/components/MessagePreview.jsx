@@ -30,13 +30,12 @@ const MessagePreview = ({ contact, isOpen, onClose }) => {
     }
   }, [isOpen, contact?.id]);
 
-  // Debug generatedEmail structure
+  // Debug generatedEmail content
   useEffect(() => {
     if (generatedEmail) {
-      console.log('🔍 Generated email structure:', generatedEmail);
-      console.log('📧 Has subject:', !!generatedEmail.subject);
-      console.log('📧 Has body:', !!generatedEmail.body);
-      console.log('📧 Body type:', typeof generatedEmail.body);
+      console.log('🔍 Generated email raw response:', generatedEmail);
+      console.log('📧 Response type:', typeof generatedEmail);
+      console.log('📧 Response length:', generatedEmail?.length);
     }
   }, [generatedEmail]);
 
@@ -109,7 +108,6 @@ const MessagePreview = ({ contact, isOpen, onClose }) => {
 
       const emailResult = await generateResponse.json();
       console.log('📧 Generated email result:', emailResult);
-      console.log('📧 Email object structure:', emailResult.email);
       setGeneratedEmail(emailResult.email);
 
     } catch (error) {
@@ -138,8 +136,7 @@ const MessagePreview = ({ contact, isOpen, onClose }) => {
 
       // Copy email to clipboard
       if (generatedEmail) {
-        const emailContent = `Subject: ${generatedEmail.subject}\n\n${generatedEmail.body}`;
-        await navigator.clipboard.writeText(emailContent);
+        await navigator.clipboard.writeText(generatedEmail);
         alert('Email content copied to clipboard!');
       }
 
@@ -184,23 +181,8 @@ const MessagePreview = ({ contact, isOpen, onClose }) => {
         {generatedEmail && (
           <div className="email-preview-section">
             <div className="email-content">
-              <div className="email-greeting">Hi {contact.name},</div>
-              
-              <div className="email-body">
-                {generatedEmail.subject && (
-                  <div className="email-subject">
-                    <strong>Subject:</strong> {generatedEmail.subject}
-                  </div>
-                )}
-                <div className="email-message">
-                  {generatedEmail.body ? (
-                    generatedEmail.body.split('\n').map((line, index) => (
-                      <p key={index}>{line}</p>
-                    ))
-                  ) : (
-                    <p>No message content available</p>
-                  )}
-                </div>
+              <div className="email-raw-response">
+                <pre>{generatedEmail}</pre>
               </div>
             </div>
 
