@@ -28,6 +28,7 @@ const AudioRecorderCompact = React.memo(({
   const audioContextRef = useRef(null);
   const analyserRef = useRef(null);
   const animationRef = useRef(null);
+  const isCancelingRef = useRef(false);
 
   // Cleanup function
   const cleanup = useCallback(() => {
@@ -44,6 +45,7 @@ const AudioRecorderCompact = React.memo(({
     if (animationRef.current) {
       cancelAnimationFrame(animationRef.current);
     }
+    isCancelingRef.current = false; // Reset canceling flag
   }, []);
 
   useEffect(() => {
@@ -116,6 +118,7 @@ const AudioRecorderCompact = React.memo(({
   const startRecording = async () => {
     try {
       setError(null);
+      isCancelingRef.current = false; // Reset canceling flag
       const stream = await navigator.mediaDevices.getUserMedia({ 
         audio: {
           echoCancellation: true,
@@ -156,8 +159,15 @@ const AudioRecorderCompact = React.memo(({
       };
 
       mediaRecorderRef.current.onstop = () => {
-        const blob = new Blob(audioChunksRef.current, { type: mimeType });
-        setRecordedBlob(blob);
+        console.log('📹 MediaRecorder onstop called, isCanceling:', isCancelingRef.current);
+        if (!isCancelingRef.current) {
+          const blob = new Blob(audioChunksRef.current, { type: mimeType });
+          console.log('💾 Setting recorded blob');
+          setRecordedBlob(blob);
+        } else {
+          console.log('🚫 Skipping blob creation due to cancellation');
+        }
+        isCancelingRef.current = false; // Reset canceling flag
       };
 
       // Start recording
@@ -191,6 +201,41 @@ const AudioRecorderCompact = React.memo(({
     }
   };
 
+  const pauseRecording = () => {
+    if (mediaRecorderRef.current && isRecording && !isPaused) {
+      mediaRecorderRef.current.pause();
+      setIsPaused(true);
+      setAudioLevel(0);
+      
+      // Pause the timer
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    }
+  };
+
+  const resumeRecording = () => {
+    if (mediaRecorderRef.current && isRecording && isPaused) {
+      mediaRecorderRef.current.resume();
+      setIsPaused(false);
+      
+      // Resume the timer
+      timerRef.current = setInterval(() => {
+        setRecordingTime(prev => {
+          const newTime = prev + 1;
+          if (newTime >= maxDuration) {
+            stopRecording();
+            return maxDuration;
+          }
+          return newTime;
+        });
+      }, 1000);
+
+      // Resume audio level monitoring
+      updateAudioLevel();
+    }
+  };
+
   const stopRecording = () => {
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop();
@@ -214,6 +259,39 @@ const AudioRecorderCompact = React.memo(({
     setRecordedBlob(null);
     setRecordingTime(0);
     setError(null);
+  };
+
+  const cancelRecording = () => {
+    // Stop ongoing recording without saving
+    if (mediaRecorderRef.current && isRecording) {
+      console.log('🗑️ Canceling recording...');
+      isCancelingRef.current = true; // Set flag before stopping
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      setIsPaused(false);
+      setAudioLevel(0);
+      setRecordingTime(0);
+      
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+      
+      cleanup();
+
+      // Clear any recorded chunks
+      audioChunksRef.current = [];
+      
+      // Force clear recorded blob after a short delay to ensure onstop doesn't overwrite
+      setTimeout(() => {
+        console.log('🟢 Forcing clear recorded blob...');
+        setRecordedBlob(null);
+        setError(null);
+      }, 50);
+      
+      if (onRecordingStop) {
+        onRecordingStop(0);
+      }
+    }
   };
 
   const getMicrophoneErrorMessage = (error) => {
@@ -262,16 +340,71 @@ const AudioRecorderCompact = React.memo(({
           </button>
         )}
 
-        {isRecording && (
-          <button 
-            className="record-button stop compact" 
-            onClick={stopRecording}
-            title="Stop recording"
-          >
-            <svg viewBox="0 0 24 24" fill="currentColor">
-              <rect x="8" y="8" width="8" height="8" rx="1"></rect>
-            </svg>
-          </button>
+        {isRecording && !isPaused && (
+          <>
+            <button 
+              className="record-button pause compact" 
+              onClick={pauseRecording}
+              title="Pause recording"
+            >
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <rect x="9" y="6" width="2" height="12" rx="1"></rect>
+                <rect x="13" y="6" width="2" height="12" rx="1"></rect>
+              </svg>
+            </button>
+            <button 
+              className="record-button stop compact" 
+              onClick={stopRecording}
+              title="Stop and finish recording"
+            >
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <rect x="8" y="8" width="8" height="8" rx="1"></rect>
+              </svg>
+            </button>
+            <button 
+              className="record-button delete compact" 
+              onClick={cancelRecording}
+              title="Cancel and delete ongoing recording"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="3,6 5,6 21,6"></polyline>
+                <path d="M19,6v14a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6"></path>
+              </svg>
+            </button>
+          </>
+        )}
+
+        {isRecording && isPaused && (
+          <>
+            <button 
+              className="record-button resume compact" 
+              onClick={resumeRecording}
+              title="Resume recording"
+            >
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <polygon points="8,6 8,18 16,12"></polygon>
+              </svg>
+            </button>
+            <button 
+              className="record-button stop compact" 
+              onClick={stopRecording}
+              title="Stop and finish recording"
+            >
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <rect x="8" y="8" width="8" height="8" rx="1"></rect>
+              </svg>
+            </button>
+            <button 
+              className="record-button delete compact" 
+              onClick={cancelRecording}
+              title="Cancel and delete ongoing recording"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="3,6 5,6 21,6"></polyline>
+                <path d="M19,6v14a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6"></path>
+              </svg>
+            </button>
+          </>
         )}
       </div>
 
@@ -282,19 +415,28 @@ const AudioRecorderCompact = React.memo(({
           </div>
 
           {isRecording && (
-            <div className="audio-visualizer compact">
-              <div className="wave-container compact">
-                {[...Array(8)].map((_, i) => (
-                  <div 
-                    key={i}
-                    className="wave-bar"
-                    style={{
-                      height: `${Math.random() * audioLevel + 20}%`,
-                      animationDelay: `${i * 0.15}s`,
-                    }}
-                  ></div>
-                ))}
+            <div className="recording-status">
+              <div className={`status-indicator ${isPaused ? 'paused' : 'recording'}`}>
+                <span className="status-dot"></span>
+                <span className="status-text">{isPaused ? 'Paused' : 'Recording'}</span>
               </div>
+              
+              {!isPaused && (
+                <div className="audio-visualizer compact">
+                  <div className="wave-container compact">
+                    {[...Array(8)].map((_, i) => (
+                      <div 
+                        key={i}
+                        className="wave-bar"
+                        style={{
+                          height: `${Math.random() * audioLevel + 20}%`,
+                          animationDelay: `${i * 0.15}s`,
+                        }}
+                      ></div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

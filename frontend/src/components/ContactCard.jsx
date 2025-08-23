@@ -41,9 +41,7 @@ const ContactCard = React.memo(({
         <div className="avatar-circle">
           {contact.name.charAt(0).toUpperCase()}
         </div>
-        {contact.email && (
-          <div className="status-indicator online"></div>
-        )}
+
       </div>
       
       <div className="contact-info">

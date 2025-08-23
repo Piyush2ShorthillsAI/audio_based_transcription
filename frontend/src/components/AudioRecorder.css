@@ -96,6 +96,11 @@
   border-radius: 50%;
 }
 
+.record-button.pause {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: white;
+}
+
 .record-button.pause:hover {
   background: linear-gradient(135deg, #d97706, #b45309);
   transform: scale(1.05);
@@ -103,12 +108,80 @@
 
 .record-button.resume {
   background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+}
+
+.record-button.resume:hover {
+  background: linear-gradient(135deg, #059669, #047857);
+}
+
+.record-button.stop {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: white;
+}
+
+.record-button.stop:hover {
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+}
+
+/* Recording Controls */
+.recording-controls {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 20px;
 }
 
 /* Recording Info */
 .recording-info {
   text-align: center;
   margin-bottom: 20px;
+}
+
+/* Recording Status */
+.recording-status {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.recording-status .status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.recording-status .status-indicator.recording {
+  background: rgba(239, 68, 68, 0.1);
+  color: #dc2626;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.recording-status .status-indicator.paused {
+  background: rgba(245, 158, 11, 0.1);
+  color: #d97706;
+  border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.recording-status .status-indicator.recording .status-dot {
+  background: #ef4444;
+  animation: blink 1s infinite;
+}
+
+.recording-status .status-indicator.paused .status-dot {
+  background: #f59e0b;
 }
 
 .time-display {
@@ -252,6 +325,18 @@
   background: linear-gradient(135deg, #dc2626, #b91c1c);
   transform: scale(1.05);
   box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+}
+
+/* Record button delete style for ongoing recording */
+.record-button.delete {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: white;
+}
+
+.record-button.delete:hover {
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+  transform: scale(1.1);
+  box-shadow: 0 4px 16px rgba(239, 68, 68, 0.4);
 }
 
 /* Compact Audio Recorder Variant */
