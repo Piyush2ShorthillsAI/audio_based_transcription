@@ -1,0 +1,19 @@
+# MINIMAL Requirements for Direct Audio to Gemini System
+# Core FastAPI requirements
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+python-multipart==0.0.6
+
+# Database requirements  
+asyncpg==0.28.0
+psycopg2-binary==2.9.7
+databases[postgresql]==0.8.0
+sqlalchemy==1.4.53
+
+# Authentication requirements
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+
+# Direct audio processing requirements (ONLY THESE!)
+aiofiles==23.2.1
+google-generativeai==0.3.2
