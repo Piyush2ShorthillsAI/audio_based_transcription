@@ -7,6 +7,7 @@ const ContactCardWithMessagePreview = React.memo(({
   isFavorite = false, 
   onToggleFavorite, 
   onViewContact,
+  onMessageClick,
   showHeart = true,
   variant = 'default' 
 }) => {
@@ -38,6 +39,12 @@ const ContactCardWithMessagePreview = React.memo(({
   const handleMessageClick = (e) => {
     e.preventDefault();
     e.stopPropagation();
+    
+    // Add contact to recents when generating message
+    if (onMessageClick) {
+      onMessageClick(contact);
+    }
+    
     navigate(`/message/${contact.id}`);
   };
 

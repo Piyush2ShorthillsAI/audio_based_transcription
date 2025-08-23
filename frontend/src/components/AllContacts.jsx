@@ -273,6 +273,7 @@ const AllContacts = React.memo(({
               isFavorite={favoritesSet.has(contact.id)}
               onToggleFavorite={onToggleFavorite}
               onViewContact={handleContactClickWithScroll}
+              onMessageClick={onContactClick}
               showHeart={true}
               variant="default"
             />

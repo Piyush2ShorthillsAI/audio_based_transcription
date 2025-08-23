@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import ContactCardWithMessagePreview from './ContactCardWithMessagePreview';
 import './ContactsList.css';
 
@@ -8,6 +8,8 @@ const Favourites = ({
   onClearFavorites,
   onContactClick
 }) => {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortBy, setSortBy] = useState('name'); // 'name', 'email', 'date'
   const [isRestoringScroll, setIsRestoringScroll] = useState(false);
   const contactsListRef = useRef(null);
   const scrollTimeoutRef = useRef(null);
@@ -24,13 +26,40 @@ const Favourites = ({
     }
   };
 
+  // Filter and sort favorites based on search term and sort option
+  const filteredFavorites = useMemo(() => {
+    let filtered = favorites;
+    
+    // Apply search filter if search term exists
+    if (searchTerm.trim()) {
+      filtered = favorites.filter(contact =>
+        contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (contact.email && contact.email.toLowerCase().includes(searchTerm.toLowerCase()))
+      );
+    }
+    
+    // Apply sorting
+    return filtered.sort((a, b) => {
+      switch (sortBy) {
+        case 'name':
+          return a.name.localeCompare(b.name);
+        case 'email':
+          return (a.email || '').localeCompare(b.email || '');
+        case 'date':
+          return new Date(b.created_at) - new Date(a.created_at); // Most recent first
+        default:
+          return 0;
+      }
+    });
+  }, [favorites, searchTerm, sortBy]);
+
   const getFavoriteStats = () => {
-    if (favorites.length === 0) return null;
+    if (filteredFavorites.length === 0) return null;
     
-    const withEmail = favorites.filter(contact => contact.email).length;
-    const withoutEmail = favorites.length - withEmail;
+    const withEmail = filteredFavorites.filter(contact => contact.email).length;
+    const withoutEmail = filteredFavorites.length - withEmail;
     
-    return { withEmail, withoutEmail, total: favorites.length };
+    return { withEmail, withoutEmail, total: filteredFavorites.length };
   };
 
   const stats = getFavoriteStats();
@@ -168,7 +197,7 @@ const Favourites = ({
       <div className="contacts-header">
         <div className="header-info">
           <h2>Favourite Contacts</h2>
-          <span className="contact-count">{favorites.length} favorites</span>
+          <span className="contact-count">{filteredFavorites.length} favorites</span>
         </div>
         {favorites.length > 0 && (
           <button 
@@ -181,6 +210,53 @@ const Favourites = ({
             {showConfirmClear ? 'Click to Confirm' : 'Clear All'}
           </button>
         )}
+      </div>
+
+      {/* Search and Filter Bar */}
+      <div className="search-filter-bar">
+        <div className="search-box">
+          <svg className="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <path d="m21 21-4.35-4.35"></path>
+          </svg>
+          <input
+            type="text"
+            placeholder="Search favorite contacts..."
+            value={searchTerm}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              // Clear saved scroll position when searching (user expects results from top)
+              window.sessionStorage.removeItem(SCROLL_POSITION_KEY);
+            }}
+            className="search-input"
+          />
+          {searchTerm && (
+            <button 
+              className="clear-search"
+              onClick={() => {
+                setSearchTerm('');
+                window.sessionStorage.removeItem(SCROLL_POSITION_KEY);
+              }}
+            >
+              ✕
+            </button>
+          )}
+        </div>
+
+        <div className="sort-dropdown">
+          <select
+            value={sortBy}
+            onChange={(e) => {
+              setSortBy(e.target.value);
+              window.sessionStorage.removeItem(SCROLL_POSITION_KEY);
+            }}
+            className="sort-select"
+          >
+            <option value="name">Sort by Name</option>
+            <option value="email">Sort by Email</option>
+            <option value="date">Sort by Date</option>
+          </select>
+        </div>
       </div>
 
       {/* Stats Banner */}
@@ -214,41 +290,64 @@ const Favourites = ({
 
       {/* Favorites List */}
       <div className="contacts-list" ref={contactsListRef}>
-        {favorites.length === 0 ? (
+        {filteredFavorites.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-icon">💝</div>
-            <h3>No favorite contacts</h3>
-            <p>Click the heart icon on any contact to add them to your favorites</p>
-            <div className="empty-hint">
-              <div className="heart-demo">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
-                </svg>
-              </div>
-              <span>Click this icon to add to favorites</span>
-            </div>
+            {searchTerm ? (
+              <>
+                <div className="empty-icon">🔍</div>
+                <h3>No favorites found</h3>
+                <p>No favorite contacts match "{searchTerm}"</p>
+                <button 
+                  className="clear-search-btn"
+                  onClick={() => {
+                    setSearchTerm('');
+                    window.sessionStorage.removeItem(SCROLL_POSITION_KEY);
+                  }}
+                >
+                  Clear Search
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="empty-icon">💝</div>
+                <h3>No favorite contacts</h3>
+                <p>Click the heart icon on any contact to add them to your favorites</p>
+                <div className="empty-hint">
+                  <div className="heart-demo">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                    </svg>
+                  </div>
+                  <span>Click this icon to add to favorites</span>
+                </div>
+              </>
+            )}
           </div>
         ) : (
           <>
-            {favorites.map(contact => (
+            {filteredFavorites.map(contact => (
               <ContactCardWithMessagePreview
                 key={contact.id}
                 contact={contact}
                 isFavorite={true}
                 onToggleFavorite={onToggleFavorite}
                 onViewContact={handleContactClickWithScroll} // Save scroll before navigation
+                onMessageClick={onContactClick}
                 showHeart={true}
-                variant="favorite"
+                variant="default"
               />
             ))}
             
             {/* Quick Stats Footer */}
             <div className="favorites-footer">
               <p>
-                {favorites.length === 1 
-                  ? 'You have 1 favorite contact' 
-                  : `You have ${favorites.length} favorite contacts`
-                }
+                {searchTerm ? (
+                  `Showing ${filteredFavorites.length} of ${favorites.length} favorite contacts`
+                ) : (
+                  favorites.length === 1 
+                    ? 'You have 1 favorite contact' 
+                    : `You have ${favorites.length} favorite contacts`
+                )}
               </p>
             </div>
           </>

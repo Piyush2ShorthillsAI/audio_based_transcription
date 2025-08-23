@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useMemo } from 'react';
 import ContactCardWithMessagePreview from './ContactCardWithMessagePreview';
 import './ContactsList.css';
 
@@ -9,6 +9,8 @@ const RecentContacts = ({
   onClearRecent,
   onContactClick
 }) => {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortBy, setSortBy] = useState('name'); // 'name', 'email', 'date'
   const [isRestoringScroll, setIsRestoringScroll] = useState(false);
   const contactsListRef = useRef(null);
   const scrollTimeoutRef = useRef(null);
@@ -124,8 +126,37 @@ const RecentContacts = ({
     };
   }, []);
 
-  // Ensure we always limit to exactly 10 most recent contacts
-  const displayedContacts = recentContacts ? recentContacts.slice(0, 10) : [];
+  // Filter, sort and limit contacts based on search term and sort option
+  const displayedContacts = useMemo(() => {
+    if (!recentContacts) return [];
+    
+    let filtered = recentContacts;
+    
+    // Apply search filter if search term exists
+    if (searchTerm.trim()) {
+      filtered = recentContacts.filter(item =>
+        item.contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (item.contact.email && item.contact.email.toLowerCase().includes(searchTerm.toLowerCase()))
+      );
+    }
+    
+    // Apply sorting
+    const sorted = filtered.sort((a, b) => {
+      switch (sortBy) {
+        case 'name':
+          return a.contact.name.localeCompare(b.contact.name);
+        case 'email':
+          return (a.contact.email || '').localeCompare(b.contact.email || '');
+        case 'date':
+          return new Date(b.accessedAt) - new Date(a.accessedAt); // Most recent first
+        default:
+          return 0;
+      }
+    });
+    
+    // Always limit to exactly 10 most recent contacts
+    return sorted.slice(0, 10);
+  }, [recentContacts, searchTerm, sortBy]);
 
   return (
     <div className="contacts-container">
@@ -149,7 +180,52 @@ const RecentContacts = ({
         )}
       </div>
 
+      {/* Search and Filter Bar */}
+      <div className="search-filter-bar">
+        <div className="search-box">
+          <svg className="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <path d="m21 21-4.35-4.35"></path>
+          </svg>
+          <input
+            type="text"
+            placeholder="Search recent contacts..."
+            value={searchTerm}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              // Clear saved scroll position when searching (user expects results from top)
+              window.sessionStorage.removeItem(SCROLL_POSITION_KEY);
+            }}
+            className="search-input"
+          />
+          {searchTerm && (
+            <button 
+              className="clear-search"
+              onClick={() => {
+                setSearchTerm('');
+                window.sessionStorage.removeItem(SCROLL_POSITION_KEY);
+              }}
+            >
+              ✕
+            </button>
+          )}
+        </div>
 
+        <div className="sort-dropdown">
+          <select
+            value={sortBy}
+            onChange={(e) => {
+              setSortBy(e.target.value);
+              window.sessionStorage.removeItem(SCROLL_POSITION_KEY);
+            }}
+            className="sort-select"
+          >
+            <option value="name">Sort by Name</option>
+            <option value="email">Sort by Email</option>
+            <option value="date">Sort by Date</option>
+          </select>
+        </div>
+      </div>
 
       {/* Info Banner */}
       <div className="info-banner">
@@ -169,9 +245,28 @@ const RecentContacts = ({
       <div className="contacts-list" style={{maxHeight: '650px', overflowY: 'auto', paddingBottom: '32px'}} ref={contactsListRef}>
         {displayedContacts.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-icon">⏰</div>
-            <h3>No recent contacts</h3>
-            <p>Contacts you view will appear here for quick access</p>
+            {searchTerm ? (
+              <>
+                <div className="empty-icon">🔍</div>
+                <h3>No contacts found</h3>
+                <p>No recent contacts match "{searchTerm}"</p>
+                <button 
+                  className="clear-search-btn"
+                  onClick={() => {
+                    setSearchTerm('');
+                    window.sessionStorage.removeItem(SCROLL_POSITION_KEY);
+                  }}
+                >
+                  Clear Search
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="empty-icon">⏰</div>
+                <h3>No recent contacts</h3>
+                <p>Contacts you view will appear here for quick access</p>
+              </>
+            )}
           </div>
         ) : (
           displayedContacts.map(item => (
@@ -181,8 +276,9 @@ const RecentContacts = ({
                 isFavorite={favorites.some(fav => fav.id === item.contact.id)}
                 onToggleFavorite={onToggleFavorite}
                 onViewContact={handleContactClickWithScroll} // Save scroll before navigation
+                onMessageClick={onContactClick}
                 showHeart={true}
-                variant="recent"
+                variant="default"
               />
               <div className="access-time">
                 {formatTimestamp(item.accessedAt)}
