@@ -81,6 +81,28 @@ const MessagePreview = ({ contact, isOpen, onClose }) => {
     fetchAudioLists(); // Refresh both lists
   };
 
+  // Handle action audio selection with toggle
+  const handleActionAudioSelect = (audio) => {
+    if (selectedActionAudio?.id === audio.id) {
+      // If clicking on already selected audio, deselect it
+      setSelectedActionAudio(null);
+    } else {
+      // Select the new audio
+      setSelectedActionAudio(audio);
+    }
+  };
+
+  // Handle context audio selection with toggle
+  const handleContextAudioSelect = (audio) => {
+    if (selectedContextAudio?.id === audio.id) {
+      // If clicking on already selected audio, deselect it
+      setSelectedContextAudio(null);
+    } else {
+      // Select the new audio
+      setSelectedContextAudio(audio);
+    }
+  };
+
   const generateMessage = async () => {
     if (!selectedActionAudio || !selectedContextAudio) {
       alert('Please select both Action and Context audio before generating message.');
@@ -364,21 +386,38 @@ const MessagePreview = ({ contact, isOpen, onClose }) => {
                     <div 
                       key={audio.id} 
                       className={`audio-item ${selectedActionAudio?.id === audio.id ? 'selected' : ''}`}
-                      onClick={() => setSelectedActionAudio(audio)}
                     >
-                      <div className="audio-info">
-                        <div className="audio-title">{audio.title}</div>
-                        <div className="audio-meta">
-                          {new Date(audio.created_at).toLocaleString()} • 
-                          {audio.duration ? ` ${Math.round(audio.duration)}s` : ''} • 
-                          {audio.file_size ? ` ${(audio.file_size / 1024).toFixed(0)}KB` : ''}
+                      <div 
+                        className="audio-item-main"
+                        onClick={() => handleActionAudioSelect(audio)}
+                      >
+                        <div className="audio-info">
+                          <div className="audio-title">{audio.title}</div>
+                          <div className="audio-meta">
+                            {new Date(audio.created_at).toLocaleString()} • 
+                            {audio.duration ? ` ${Math.round(audio.duration)}s` : ''} • 
+                            {audio.file_size ? ` ${(audio.file_size / 1024).toFixed(0)}KB` : ''}
+                          </div>
                         </div>
+                        {selectedActionAudio?.id === audio.id && (
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M20 6L9 17l-5-5"></path>
+                          </svg>
+                        )}
                       </div>
-                      {selectedActionAudio?.id === audio.id && (
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M20 6L9 17l-5-5"></path>
-                        </svg>
-                      )}
+                      
+                      {/* Audio Playback Controls */}
+                      <div className="audio-playback" onClick={(e) => e.stopPropagation()}>
+                        <audio 
+                          controls 
+                          preload="none"
+                          className="audio-player"
+                        >
+                          <source src={`http://localhost:8000/${audio.file_path}`} type="audio/webm" />
+                          <source src={`http://localhost:8000/${audio.file_path}`} type="audio/mp3" />
+                          Your browser does not support the audio element.
+                        </audio>
+                      </div>
                     </div>
                   ))}
                 </>
@@ -421,21 +460,38 @@ const MessagePreview = ({ contact, isOpen, onClose }) => {
                     <div 
                       key={audio.id} 
                       className={`audio-item ${selectedContextAudio?.id === audio.id ? 'selected' : ''}`}
-                      onClick={() => setSelectedContextAudio(audio)}
                     >
-                      <div className="audio-info">
-                        <div className="audio-title">{audio.title}</div>
-                        <div className="audio-meta">
-                          {new Date(audio.created_at).toLocaleString()} • 
-                          {audio.duration ? ` ${Math.round(audio.duration)}s` : ''} • 
-                          {audio.file_size ? ` ${(audio.file_size / 1024).toFixed(0)}KB` : ''}
+                      <div 
+                        className="audio-item-main"
+                        onClick={() => handleContextAudioSelect(audio)}
+                      >
+                        <div className="audio-info">
+                          <div className="audio-title">{audio.title}</div>
+                          <div className="audio-meta">
+                            {new Date(audio.created_at).toLocaleString()} • 
+                            {audio.duration ? ` ${Math.round(audio.duration)}s` : ''} • 
+                            {audio.file_size ? ` ${(audio.file_size / 1024).toFixed(0)}KB` : ''}
+                          </div>
                         </div>
+                        {selectedContextAudio?.id === audio.id && (
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M20 6L9 17l-5-5"></path>
+                          </svg>
+                        )}
                       </div>
-                      {selectedContextAudio?.id === audio.id && (
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M20 6L9 17l-5-5"></path>
-                        </svg>
-                      )}
+                      
+                      {/* Audio Playback Controls */}
+                      <div className="audio-playback" onClick={(e) => e.stopPropagation()}>
+                        <audio 
+                          controls 
+                          preload="none"
+                          className="audio-player"
+                        >
+                          <source src={`http://localhost:8000/${audio.file_path}`} type="audio/webm" />
+                          <source src={`http://localhost:8000/${audio.file_path}`} type="audio/mp3" />
+                          Your browser does not support the audio element.
+                        </audio>
+                      </div>
                     </div>
                   ))}
                 </>
