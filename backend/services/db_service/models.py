@@ -134,3 +134,19 @@ class AudioRecordingModel(Base):
         }
 
 
+class ApprovedEmail(Base):
+    """Simple table for approved emails with three foreign keys"""
+    __tablename__ = "approved_emails"
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    contact_id = Column(UUID(as_uuid=True), ForeignKey("crm_contacts.id"), nullable=False)
+    recording_id = Column(UUID(as_uuid=True), ForeignKey("audio_recordings.id"), nullable=False)
+    
+    email_content = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    
+    # Relationships
+    user = relationship("User")
+    contact = relationship("Contact")
+    recording = relationship("AudioRecordingModel")

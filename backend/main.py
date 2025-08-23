@@ -602,6 +602,37 @@ async def generate_dual_audio_email(
         raise HTTPException(status_code=500, detail=f"Failed to generate email: {str(e)}")
 
 
+@app.post("/emails/approve")
+async def save_approved_email(request: dict, current_user: User = Depends(get_current_user)):
+    """Save approved email with three foreign keys"""
+    try:
+        contact_id = request.get("contact_id")
+        recording_id = request.get("recording_id")  # Single recording ID
+        email_content = request.get("email_content")
+        
+        if not all([contact_id, recording_id, email_content]):
+            raise HTTPException(status_code=400, detail="Missing required fields")
+        
+        # Insert into approved_emails table
+        query = """
+        INSERT INTO approved_emails (id, user_id, contact_id, recording_id, email_content, created_at)
+        VALUES (:id, :user_id, :contact_id, :recording_id, :email_content, NOW())
+        """
+        
+        await database.execute(query, {
+            "id": str(uuid.uuid4()),
+            "user_id": current_user.id,
+            "contact_id": contact_id,
+            "recording_id": recording_id,
+            "email_content": email_content
+        })
+        
+        return {"message": "Email approved and saved"}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/audio/recordings")
 async def get_audio_recordings(
     limit: int = 50,

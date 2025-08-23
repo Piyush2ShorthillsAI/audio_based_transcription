@@ -127,6 +127,22 @@ const MessagePreview = ({ contact, isOpen, onClose }) => {
     setEmailStatus('approved');
     
     try {
+      const emailToCopy = editedEmail || generatedEmail;
+      
+      // Save approved email to database
+      await fetch('http://localhost:8000/emails/approve', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          contact_id: contact.id,
+          recording_id: selectedActionAudio?.id || selectedContextAudio?.id,
+          email_content: emailToCopy
+        })
+      });
+
       // Save to recents
       const response = await fetch(`http://localhost:8000/recents/${contact.id}`, {
         method: 'POST',
@@ -139,15 +155,15 @@ const MessagePreview = ({ contact, isOpen, onClose }) => {
         console.log('Contact added to recents');
       }
 
-      // Copy email to clipboard (use edited version if available)
-      const emailToCopy = editedEmail || generatedEmail;
+      // Copy email to clipboard
       if (emailToCopy) {
         await navigator.clipboard.writeText(emailToCopy);
-        alert('Email content copied to clipboard!');
+        alert('Email approved and saved!');
       }
 
     } catch (error) {
       console.error('Error approving email:', error);
+      alert('Error saving email. Please try again.');
     }
   };
 
