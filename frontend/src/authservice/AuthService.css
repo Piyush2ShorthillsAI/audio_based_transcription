@@ -192,6 +192,24 @@ html, body {
   border-color: rgba(255, 255, 255, 0.4);
 }
 
+/* Password Requirements Styles */
+.password-requirements {
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.requirements-text {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.875rem;
+  font-weight: 400;
+  margin: 0;
+  line-height: 1.4;
+  text-align: center;
+}
+
 .auth-button {
   width: 100%;
   padding: 1rem 2rem;

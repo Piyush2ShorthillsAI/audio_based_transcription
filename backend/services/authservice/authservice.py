@@ -183,8 +183,39 @@ class AuthService:
         })
         return result is not None
     
+    @staticmethod
+    def validate_password(password: str) -> None:
+        """Validate password meets requirements"""
+        import re
+        
+        errors = []
+        
+        if len(password) < 8:
+            errors.append("Password must contain at least 8 characters")
+            
+        if not re.search(r'[A-Z]', password):
+            errors.append("Password must include at least one uppercase letter (A-Z)")
+            
+        if not re.search(r'[a-z]', password):
+            errors.append("Password must include at least one lowercase letter (a-z)")
+            
+        if not re.search(r'\d', password):
+            errors.append("Password must include at least one numeric digit (0-9)")
+            
+        if not re.search(r'[!@#$%^&*()_+\-=\[\]{};\':"\\|,.<>\/?]', password):
+            errors.append("Password must include at least one special character (!@#$%^&*)")
+            
+        if errors:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Password does not meet security requirements. Must contain at least 8 characters including uppercase, lowercase, numeric, and special characters."
+            )
+
     async def signup(self, user_data: UserSignup, photo_filename: Optional[str] = None) -> TokenResponse:
         """Register a new user"""
+        # Validate password requirements
+        self.validate_password(user_data.password)
+        
         # Check if username already exists
         existing_user = await self.get_user_by_username(user_data.username)
         if existing_user:

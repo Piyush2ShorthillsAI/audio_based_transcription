@@ -398,10 +398,40 @@ export const SignupForm = ({ onToggleMode }) => {
     }
   };
 
+  const validatePassword = (password) => {
+    const requirements = [];
+    
+    if (password.length < 8) {
+      requirements.push('at least 8 characters');
+    }
+    if (!/[A-Z]/.test(password)) {
+      requirements.push('at least one uppercase letter (A-Z)');
+    }
+    if (!/[a-z]/.test(password)) {
+      requirements.push('at least one lowercase letter (a-z)');
+    }
+    if (!/\d/.test(password)) {
+      requirements.push('at least one numeric digit (0-9)');
+    }
+    if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+      requirements.push('at least one special character (!@#$%^&*)');
+    }
+    
+    return requirements;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
+
+    // Validate password requirements
+    const passwordRequirements = validatePassword(formData.password);
+    if (passwordRequirements.length > 0) {
+      setError('Password does not meet security requirements. Please ensure it contains at least 8 characters including uppercase, lowercase, numeric, and special characters.');
+      setLoading(false);
+      return;
+    }
 
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
@@ -483,6 +513,11 @@ export const SignupForm = ({ onToggleMode }) => {
                 required
                 placeholder="Create a secure password"
               />
+            </div>
+            <div className="password-requirements">
+              <p className="requirements-text">
+                Password must contain at least 8 characters including uppercase, lowercase, numeric, and special characters.
+              </p>
             </div>
           </div>
 

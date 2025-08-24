@@ -104,6 +104,7 @@ const ContactCardWithMessagePreview = React.memo(({
             to={`/contact/${contact.id}`} 
             className="view-button"
             onClick={handleViewClick}
+            title="View contact details"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
