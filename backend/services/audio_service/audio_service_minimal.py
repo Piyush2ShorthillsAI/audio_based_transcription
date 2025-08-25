@@ -31,55 +31,125 @@ class AudioServiceMinimal:
         contact_id: Optional[str] = None,
         audio_type: Optional[str] = None
     ) -> Dict[str, Any]:
-        """Save uploaded audio file (no metadata extraction - keep it simple)"""
+        """Save uploaded audio file - ALWAYS converts to MP3 format only"""
         try:
-            # Generate unique filename
+            # Generate unique filename with original extension for temporary storage
             file_extension = audio_file.filename.split('.')[-1] if '.' in audio_file.filename else 'webm'
-            unique_filename = f"{uuid.uuid4()}.{file_extension}"
-            file_path = self.upload_dir / unique_filename
+            temp_filename = f"{uuid.uuid4()}.{file_extension}"
+            temp_file_path = self.upload_dir / temp_filename
             
-            # Save file to disk
-            async with aiofiles.open(file_path, 'wb') as f:
+            # Save temporary file to disk
+            async with aiofiles.open(temp_file_path, 'wb') as f:
                 content = await audio_file.read()
                 await f.write(content)
             
-            # Get file size only (skip complex audio metadata)
-            file_size = len(content)
+            print(f"📁 Uploaded temporary file: {temp_filename}")
             
-            # Create simple database record
+            # Convert to MP3 format (this will handle the conversion or return as-is if already MP3)
+            mp3_file_path = await self._ensure_mp3_format(str(temp_file_path), recording_id=None)
+            
+            # Get final MP3 file details
+            import os
+            from pathlib import Path
+            mp3_path_obj = Path(mp3_file_path)
+            file_size = os.path.getsize(mp3_file_path) if mp3_path_obj.exists() else len(content)
+            final_filename = mp3_path_obj.name
+            
+            # Delete original file if it was converted (different from MP3 output)
+            if str(temp_file_path) != mp3_file_path:
+                try:
+                    temp_file_path.unlink()  # Delete original file
+                    print(f"🗑️ Deleted temporary file: {temp_filename}")
+                except Exception as e:
+                    print(f"⚠️ Could not delete temporary file: {e}")
+            
+            print(f"💾 Final MP3 file: {final_filename} ({file_size} bytes)")
+            
+            # Create database record in appropriate table based on audio_type
             recording_id = str(uuid.uuid4())
             
-            query = """
-            INSERT INTO audio_recordings (
-                id, user_id, contact_id, title, filename, file_path, file_size,
-                audio_type, status, format, created_at, updated_at
-            ) VALUES (
-                :id, :user_id, :contact_id, :title, :filename, :file_path, :file_size,
-                :audio_type, :status, :format, NOW(), NOW()
-            ) RETURNING *
-            """
-            
-            result = await self.database.fetch_one(query, {
-                "id": recording_id,
-                "user_id": user_id,
-                "contact_id": contact_id,
-                "title": title,
-                "filename": audio_file.filename,
-                "file_path": str(file_path),
-                "file_size": file_size,
-                "audio_type": audio_type,
-                "status": "uploaded",
-                "format": audio_file.content_type or f"audio/{file_extension}"
-            })
+            if audio_type == "action":
+                # Save to action_recordings table
+                query = """
+                INSERT INTO action_recordings (
+                    id, user_id, contact_id, title, filename, file_path, file_size,
+                    status, format, created_at, updated_at
+                ) VALUES (
+                    :id, :user_id, :contact_id, :title, :filename, :file_path, :file_size,
+                    :status, :format, NOW(), NOW()
+                ) RETURNING *
+                """
+                
+                result = await self.database.fetch_one(query, {
+                    "id": recording_id,
+                    "user_id": user_id,
+                    "contact_id": contact_id,
+                    "title": title,
+                    "filename": final_filename,
+                    "file_path": mp3_file_path,
+                    "file_size": file_size,
+                    "status": "uploaded",
+                    "format": "audio/mp3"
+                })
+                
+            elif audio_type == "context":
+                # For context recordings, we need an action_recording_id
+                # This should be provided or we need to find the most recent action recording
+                if not contact_id:
+                    raise Exception("contact_id is required for context recordings")
+                
+                # Find the most recent action recording for this user and contact
+                action_query = """
+                SELECT id FROM action_recordings 
+                WHERE user_id = :user_id AND contact_id = :contact_id 
+                ORDER BY created_at DESC 
+                LIMIT 1
+                """
+                action_result = await self.database.fetch_one(action_query, {
+                    "user_id": user_id,
+                    "contact_id": contact_id
+                })
+                
+                if not action_result:
+                    raise Exception("No action recording found. Context recordings must be linked to an action recording.")
+                
+                action_recording_id = action_result["id"]
+                
+                # Save to context_recordings table
+                query = """
+                INSERT INTO context_recordings (
+                    id, user_id, contact_id, action_recording_id, title, filename, file_path, file_size,
+                    status, format, created_at, updated_at
+                ) VALUES (
+                    :id, :user_id, :contact_id, :action_recording_id, :title, :filename, :file_path, :file_size,
+                    :status, :format, NOW(), NOW()
+                ) RETURNING *
+                """
+                
+                result = await self.database.fetch_one(query, {
+                    "id": recording_id,
+                    "user_id": user_id,
+                    "contact_id": contact_id,
+                    "action_recording_id": action_recording_id,
+                    "title": title,
+                    "filename": final_filename,
+                    "file_path": mp3_file_path,
+                    "file_size": file_size,
+                    "status": "uploaded",
+                    "format": "audio/mp3"
+                })
+            else:
+                raise Exception(f"Invalid audio_type: {audio_type}. Must be 'action' or 'context'")
             
             return {
                 "recording_id": recording_id,
-                "filename": unique_filename,
-                "file_path": str(file_path),
+                "filename": final_filename,
+                "file_path": mp3_file_path,
                 "file_size": file_size,
                 "duration": None,  # Not extracted in minimal mode
                 "status": "uploaded",
-                "message": "Audio file saved successfully"
+                "format": "audio/mp3",
+                "message": "Audio file saved as MP3 successfully"
             }
             
         except Exception as e:
@@ -109,30 +179,59 @@ class AudioServiceMinimal:
             except ValueError as e:
                 raise Exception(f"Invalid UUID format: {str(e)}")
             
-            recordings_query = """
-            SELECT id, file_path, filename FROM audio_recordings 
+            # Query both action_recordings and context_recordings tables
+            action_query = """
+            SELECT id, file_path, filename, 'action' as recording_type FROM action_recordings 
             WHERE id IN (:relationship_id, :content_id) AND user_id = :user_id
             """
-            recordings = await self.database.fetch_all(recordings_query, {
+            
+            context_query = """
+            SELECT id, file_path, filename, 'context' as recording_type FROM context_recordings 
+            WHERE id IN (:relationship_id, :content_id) AND user_id = :user_id
+            """
+            
+            # Get recordings from both tables
+            action_recordings = await self.database.fetch_all(action_query, {
                 "relationship_id": relationship_uuid,
                 "content_id": content_uuid,
                 "user_id": user_uuid
             })
             
+            context_recordings = await self.database.fetch_all(context_query, {
+                "relationship_id": relationship_uuid,
+                "content_id": content_uuid,
+                "user_id": user_uuid
+            })
+            
+            # Combine results
+            recordings = list(action_recordings) + list(context_recordings)
+            
             print(f"📊 Database query returned {len(recordings)} recording(s)")
             for rec in recordings:
-                print(f"   📄 Found: {rec['id']} -> {rec['filename']} ({rec['file_path']})")
+                print(f"   📄 Found: {rec['id']} -> {rec['filename']} ({rec['file_path']}) [type: {rec['recording_type']}]")
             
             if len(recordings) == 0:
-                # Check if recordings exist for any user (debugging)
-                debug_query = """
-                SELECT id, user_id FROM audio_recordings 
+                # Check if recordings exist in either table for debugging
+                debug_action_query = """
+                SELECT id, user_id FROM action_recordings 
                 WHERE id IN (:relationship_id, :content_id)
                 """
-                debug_recordings = await self.database.fetch_all(debug_query, {
+                debug_context_query = """
+                SELECT id, user_id FROM context_recordings 
+                WHERE id IN (:relationship_id, :content_id)
+                """
+                
+                debug_action_recordings = await self.database.fetch_all(debug_action_query, {
                     "relationship_id": relationship_uuid,
                     "content_id": content_uuid
                 })
+                
+                debug_context_recordings = await self.database.fetch_all(debug_context_query, {
+                    "relationship_id": relationship_uuid,
+                    "content_id": content_uuid
+                })
+                
+                debug_recordings = list(debug_action_recordings) + list(debug_context_recordings)
                 
                 if debug_recordings:
                     different_users = [str(r['user_id']) for r in debug_recordings]
@@ -302,7 +401,7 @@ class AudioServiceMinimal:
         return file_path
 
     async def _update_database_for_mp3(self, recording_id: str, mp3_path: str):
-        """Update database record to reflect MP3 conversion"""
+        """Update database record to reflect MP3 conversion - works with both action and context recordings"""
         try:
             from pathlib import Path
             import os
@@ -310,16 +409,18 @@ class AudioServiceMinimal:
             mp3_file = Path(mp3_path)
             file_size = os.path.getsize(mp3_path) if mp3_file.exists() else 0
             
-            update_query = """
-            UPDATE audio_recordings 
+            # Try to update in action_recordings first
+            action_update_query = """
+            UPDATE action_recordings 
             SET file_path = :file_path,
                 filename = :filename,
                 format = :format,
-                file_size = :file_size
+                file_size = :file_size,
+                updated_at = NOW()
             WHERE id = :recording_id
             """
             
-            await self.database.execute(update_query, {
+            action_result = await self.database.execute(action_update_query, {
                 "file_path": mp3_path,
                 "filename": mp3_file.name,
                 "format": "audio/mp3",
@@ -327,33 +428,78 @@ class AudioServiceMinimal:
                 "recording_id": recording_id
             })
             
-            print(f"   💾 Database updated: {mp3_file.name} (size: {file_size} bytes)")
+            # If no rows affected in action_recordings, try context_recordings
+            if action_result == 0:
+                context_update_query = """
+                UPDATE context_recordings 
+                SET file_path = :file_path,
+                    filename = :filename,
+                    format = :format,
+                    file_size = :file_size,
+                    updated_at = NOW()
+                WHERE id = :recording_id
+                """
+                
+                context_result = await self.database.execute(context_update_query, {
+                    "file_path": mp3_path,
+                    "filename": mp3_file.name,
+                    "format": "audio/mp3",
+                    "file_size": file_size,
+                    "recording_id": recording_id
+                })
+                
+                if context_result == 0:
+                    print(f"   ⚠️  Recording ID {recording_id} not found in either table")
+                    return
+                else:
+                    print(f"   💾 Context recording updated: {mp3_file.name} (size: {file_size} bytes)")
+            else:
+                print(f"   💾 Action recording updated: {mp3_file.name} (size: {file_size} bytes)")
             
         except Exception as e:
             print(f"   ⚠️  Database update failed: {str(e)}")
             # Don't fail the conversion, just log the error
 
     async def get_user_recordings(self, user_id: str):
-        """Get all audio recordings for a specific user"""
-        query = """
+        """Get all audio recordings for a specific user from both action and context tables"""
+        
+        action_query = """
         SELECT id, user_id, contact_id, title, filename, file_path, 
-               file_size, audio_type, status, format, duration, created_at
-        FROM audio_recordings 
+               file_size, 'action' as audio_type, status, format, duration, created_at
+        FROM action_recordings 
+        WHERE user_id = :user_id 
+        ORDER BY created_at DESC
+        """
+        
+        context_query = """
+        SELECT id, user_id, contact_id, title, filename, file_path, 
+               file_size, 'context' as audio_type, status, format, duration, created_at
+        FROM context_recordings 
         WHERE user_id = :user_id 
         ORDER BY created_at DESC
         """
         
         try:
-            recordings = await self.database.fetch_all(query, {
+            # Get recordings from both tables
+            action_recordings = await self.database.fetch_all(action_query, {
                 "user_id": user_id
             })
             
-            # Always return a list - empty if no recordings found
-            if not recordings:
+            context_recordings = await self.database.fetch_all(context_query, {
+                "user_id": user_id
+            })
+            
+            # Combine and sort by created_at
+            all_recordings = list(action_recordings) + list(context_recordings)
+            
+            if not all_recordings:
                 return []
             
-            # Convert to dict format
-            return [dict(recording) for recording in recordings]
+            # Convert to dict format and sort by creation time (newest first)
+            recordings_dict = [dict(recording) for recording in all_recordings]
+            recordings_dict.sort(key=lambda x: x['created_at'], reverse=True)
+            
+            return recordings_dict
             
         except Exception as e:
             print(f"❌ Error getting user recordings: {e}")

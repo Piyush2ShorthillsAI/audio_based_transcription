@@ -638,12 +638,13 @@ async def get_approved_emails(
     contact_id: str = None,
     current_user: User = Depends(get_current_user)
 ):
-    """Get approved emails for the current user, optionally filtered by contact"""
+    """Get approved emails for the current user with new recording structure"""
     try:
         if contact_id:
             # Get approved emails for specific contact
             query = """
-            SELECT id, contact_id, recording_id, email_content, created_at
+            SELECT id, contact_id, action_recording_id, context_recording_id, 
+                   email_content, created_at
             FROM approved_emails 
             WHERE user_id = :user_id AND contact_id = :contact_id
             ORDER BY created_at DESC
@@ -655,14 +656,26 @@ async def get_approved_emails(
         else:
             # Get all approved emails for user
             query = """
-            SELECT id, contact_id, recording_id, email_content, created_at
+            SELECT id, contact_id, action_recording_id, context_recording_id,
+                   email_content, created_at
             FROM approved_emails 
             WHERE user_id = :user_id
             ORDER BY created_at DESC
             """
             emails = await database.fetch_all(query, {"user_id": current_user.id})
         
-        return {"emails": [dict(email) for email in emails]}
+        # Convert to list of dictionaries and add recording info
+        email_list = []
+        for email in emails:
+            email_dict = dict(email)
+            # Add recording type info for better UI display
+            email_dict["has_action_audio"] = bool(email_dict.get("action_recording_id"))
+            email_dict["has_context_audio"] = bool(email_dict.get("context_recording_id"))
+            # For backward compatibility, set recording_id to action_recording_id if it exists
+            email_dict["recording_id"] = email_dict.get("action_recording_id") or email_dict.get("context_recording_id")
+            email_list.append(email_dict)
+        
+        return {"emails": email_list}
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -698,16 +711,28 @@ async def get_audio_recording(
     recording_id: str,
     current_user: User = Depends(get_current_user)
 ):
-    """Get details for a specific audio recording"""
+    """Get details for a specific audio recording from action or context tables"""
     try:
-        query = """
-        SELECT * FROM audio_recordings 
+        # Try action_recordings first
+        action_query = """
+        SELECT *, 'action' as audio_type FROM action_recordings 
         WHERE id = :recording_id AND user_id = :user_id
         """
-        recording = await database.fetch_one(query, {
+        recording = await database.fetch_one(action_query, {
             "recording_id": recording_id,
             "user_id": current_user.id
         })
+        
+        # If not found in action_recordings, try context_recordings
+        if not recording:
+            context_query = """
+            SELECT *, 'context' as audio_type FROM context_recordings 
+            WHERE id = :recording_id AND user_id = :user_id
+            """
+            recording = await database.fetch_one(context_query, {
+                "recording_id": recording_id,
+                "user_id": current_user.id
+            })
         
         if not recording:
             raise HTTPException(status_code=404, detail="Recording not found")
@@ -722,20 +747,78 @@ async def get_audio_recording(
 @app.delete("/audio/recordings/{recording_id}")
 async def delete_audio_recording(
     recording_id: str,
-    current_user: User = Depends(get_current_user),
-    audio_service: AudioServiceMinimal = Depends(get_audio_service)
+    current_user: User = Depends(get_current_user)
 ):
-    """Delete an audio recording"""
+    """Delete an audio recording from action or context tables"""
     try:
-        success = await audio_service.delete_recording(
-            recording_id=recording_id,
-            user_id=current_user.id
-        )
+        import os
+        from pathlib import Path
         
-        if not success:
+        # First, find the recording to get the file path
+        action_query = """
+        SELECT id, file_path FROM action_recordings 
+        WHERE id = :recording_id AND user_id = :user_id
+        """
+        recording = await database.fetch_one(action_query, {
+            "recording_id": recording_id,
+            "user_id": current_user.id
+        })
+        
+        table_name = "action_recordings"
+        
+        # If not found in action_recordings, try context_recordings
+        if not recording:
+            context_query = """
+            SELECT id, file_path FROM context_recordings 
+            WHERE id = :recording_id AND user_id = :user_id
+            """
+            recording = await database.fetch_one(context_query, {
+                "recording_id": recording_id,
+                "user_id": current_user.id
+            })
+            table_name = "context_recordings"
+        
+        if not recording:
+            raise HTTPException(status_code=404, detail="Recording not found")
+        
+        file_path = recording['file_path']
+        
+        # Delete the database record
+        delete_query = f"""
+        DELETE FROM {table_name} 
+        WHERE id = :recording_id AND user_id = :user_id
+        """
+        
+        rows_deleted = await database.execute(delete_query, {
+            "recording_id": recording_id,
+            "user_id": current_user.id
+        })
+        
+        if rows_deleted == 0:
             raise HTTPException(status_code=404, detail="Recording not found or could not be deleted")
         
-        return {"message": "Recording deleted successfully"}
+        # Delete the physical file
+        try:
+            if file_path:
+                full_path = Path(file_path)
+                if not full_path.is_absolute():
+                    # If relative path, make it relative to backend directory
+                    full_path = Path(__file__).parent / file_path
+                
+                if full_path.exists():
+                    full_path.unlink()
+                    print(f"✅ Deleted file: {full_path}")
+                else:
+                    print(f"⚠️ File not found for deletion: {full_path}")
+        except Exception as file_error:
+            print(f"⚠️ Error deleting file {file_path}: {str(file_error)}")
+            # Don't fail the entire operation if file deletion fails
+        
+        return {
+            "message": "Recording deleted successfully",
+            "recording_id": recording_id,
+            "table": table_name
+        }
         
     except HTTPException:
         raise
@@ -748,32 +831,63 @@ async def get_contact_audio_recordings(
     audio_type: Optional[str] = None,
     current_user: User = Depends(get_current_user)
 ):
-    """Get all audio recordings associated with a specific contact, optionally filtered by audio_type"""
+    """Get all audio recordings associated with a specific contact from both action and context tables"""
     try:
-        # Build query with optional audio_type filter
-        if audio_type:
-            query = """
-            SELECT * FROM audio_recordings 
-            WHERE contact_id = :contact_id AND user_id = :user_id AND audio_type = :audio_type
-            ORDER BY created_at DESC
-            """
-            params = {
-                "contact_id": contact_id,
-                "user_id": current_user.id,
-                "audio_type": audio_type
-            }
-        else:
-            query = """
-            SELECT * FROM audio_recordings 
+        recordings = []
+        
+        # Get recordings based on audio_type filter
+        if audio_type == "action":
+            # Only action recordings
+            action_query = """
+            SELECT *, 'action' as audio_type FROM action_recordings 
             WHERE contact_id = :contact_id AND user_id = :user_id
             ORDER BY created_at DESC
             """
-            params = {
+            action_recordings = await database.fetch_all(action_query, {
                 "contact_id": contact_id,
                 "user_id": current_user.id
-            }
+            })
+            recordings = list(action_recordings)
             
-        recordings = await database.fetch_all(query, params)
+        elif audio_type == "context":
+            # Only context recordings
+            context_query = """
+            SELECT *, 'context' as audio_type FROM context_recordings 
+            WHERE contact_id = :contact_id AND user_id = :user_id
+            ORDER BY created_at DESC
+            """
+            context_recordings = await database.fetch_all(context_query, {
+                "contact_id": contact_id,
+                "user_id": current_user.id
+            })
+            recordings = list(context_recordings)
+            
+        else:
+            # Get all recordings from both tables
+            action_query = """
+            SELECT *, 'action' as audio_type FROM action_recordings 
+            WHERE contact_id = :contact_id AND user_id = :user_id
+            ORDER BY created_at DESC
+            """
+            context_query = """
+            SELECT *, 'context' as audio_type FROM context_recordings 
+            WHERE contact_id = :contact_id AND user_id = :user_id
+            ORDER BY created_at DESC
+            """
+            
+            action_recordings = await database.fetch_all(action_query, {
+                "contact_id": contact_id,
+                "user_id": current_user.id
+            })
+            
+            context_recordings = await database.fetch_all(context_query, {
+                "contact_id": contact_id,
+                "user_id": current_user.id
+            })
+            
+            # Combine and sort by creation time
+            all_recordings = list(action_recordings) + list(context_recordings)
+            recordings = sorted(all_recordings, key=lambda x: x['created_at'], reverse=True)
         
         return {
             "contact_id": contact_id,
